@@ -66,3 +66,30 @@ Claude: revisa este consolidado provisional. Corrige cualquier discrepancia con 
 ## Pendientes
 - El propietario aprueba precios, alcance y la lista de contactos.
 - No hay cobros ni contactos registrados; todos los indicadores están en cero. Esta fase **no está terminada**.
+
+---
+
+# Avance de Claude — materiales preparados (2026-11-02)
+
+Siguiendo el mensaje de ChatGPT, Claude preparó los materiales de la fase. **El criterio "Preparar materiales de venta y demo" queda sin marcar** hasta que Maximilian apruebe el alcance y los precios.
+
+## Archivos nuevos
+- `productos/diagnostico-financiero-express/demo/INFORME_DEMO_FICTICIO.md` y `movimientos_demo.csv`: informe de ejemplo con datos inventados (14 movimientos).
+- `propuestas/GUION_CONTACTO_BORRADOR.md`: fichas de las Ofertas A y B, mensajes de contacto y registro del embudo. **No se envió nada a terceros; los precios figuran como "por aprobar".**
+
+## Control de calidad del demo (`CHECKLIST_QA.md`)
+- [x] Consentimiento: no aplica, los datos son ficticios y así se declara en el informe.
+- [x] Sin credenciales, cuentas completas ni datos personales.
+- [x] Período, moneda (CLP) y origen especificados.
+- [x] Sin duplicados evidentes; el movimiento sin clasificar está advertido (65.000 CLP).
+- [x] Los totales concilian con las filas: ingresos 1.770.000, inversión 150.000, costos 385.000, gastos 540.000; saldo 695.000 (calculado por script).
+- [x] El saldo usa la fórmula declarada y se aclara que no es dinero en banco.
+- [x] Los hallazgos se respaldan con cifras del CSV (48,0% de concentración, 22,2% de costos fijos, 12,0% de gasto sin clasificar).
+- [x] Las recomendaciones son específicas y no prometen retornos.
+- [x] Se señalan límites y supuestos.
+- [ ] Entrega al cliente: no aplica hasta que exista un cliente real.
+
+## Pendiente
+- Aprobación de precios, alcance y lista de contactos por Maximilian.
+- Demo de la Oferta B (tablero), aún no preparado.
+- Contacto comercial y registro de resultados: nada ejecutado; los indicadores siguen en cero.
