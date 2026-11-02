@@ -26,3 +26,6 @@ En Vercel: **Add New → Project → importa el repo**, Framework Preset **Other
 
 ## Cómo sincroniza
 Cada cambio se guarda tras 700 ms: la página compara el estado con lo último guardado y hace insert, update o delete de lo que cambió. Filas incompletas o con monto negativo no se envían hasta que las corrijas. "Restaurar datos iniciales" e "Importar" reemplazan todos tus movimientos en la nube.
+
+## Páginas comerciales (borrador)
+En `comercial/` hay cuatro páginas HTML estáticas para revisar las ofertas piloto: `index.html` (portada), `diagnostico.html`, `tablero.html` y `plan.html`. No necesitan Supabase ni configuración. Para verlas en local: `npx serve comercial` y abre la URL indicada. Los precios son hipótesis sin aprobar y todos los datos de ejemplo son ficticios. No se han desplegado.
