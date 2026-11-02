@@ -1,41 +1,36 @@
-# CLAUDE — Propuesta independiente V1 (2026-11-02)
+# CLAUDE — Propuesta independiente V2 (2026-11-02)
+
+Cambio respecto a la V1: por indicación de Maximilian, el primer objetivo es **cómo generar la venta**, y lo que se vende son **los productos que Claude puede entregar**. La V1 partía de ofertas; esta versión parte de productos, canales y embudo.
 
 ## Objetivo
-Recuperar USD 240 de gasto en Claude Pro como **beneficio neto incremental cobrado** (cobros confirmados − comisiones − costos incrementales). Sin garantía de ingresos. Cifras de precio y demanda son hipótesis por validar.
+Recuperar USD 240 de gasto en Claude Pro como **beneficio neto incremental cobrado** (cobros confirmados − comisiones − costos incrementales). Sin garantía de ingresos. Precios y demanda son hipótesis por validar.
 
-## Diferencias respecto a la propuesta de ChatGPT
-- Coincido en vender primero un servicio manual y construir software después.
-- Propongo **no depender de ControlFinanciero** para la primera venta: entregar el diagnóstico en una planilla/tablero simple del cliente (Excel o Google Sheets). ControlFinanciero queda como upsell tras pasar revisión de seguridad.
-- Propongo ordenar las ofertas candidatas con una puntuación explícita (ver abajo) y probar **dos ofertas en paralelo**, no una sola.
+## Productos que Claude entrega (y un canal para cada uno)
+El orden es criterio de Claude (menor esfuerzo y menor riesgo primero), no un dato de mercado.
 
-## Ofertas candidatas (ranking propio, 1–5; estimaciones, no datos de mercado)
-Puntuación = velocidad de cobro + bajo esfuerzo + margen + bajo riesgo (máx. 20).
+| Prioridad | Producto | Qué se entrega | Canal principal | Primer paso | Precio de prueba (USD) |
+|---|---|---|---|---|---|
+| 1 | Diagnóstico Financiero Express | Resumen de ingresos, costos, gastos y saldo, con acciones priorizadas | Contacto directo en la red de Maximilian (pymes e independientes conocidos) | Escribir a personas conocidas con una oferta de precio fijo y alcance escrito | 60 |
+| 2 | Tablero de KPIs en Sheets/Excel | Tablero con los indicadores clave del negocio del cliente | LinkedIn, con un caso demo sin datos reales | Publicar el demo y conversar con quien responda | 120 |
+| 3 | Automatización de un reporte con Python | Script que consolida planillas y genera el reporte recurrente | Ex colegas y empresas donde Maximilian trabajó en BI y control financiero | Preguntar qué reporte repetitivo les consume más horas | 150 |
+| 4 | Agente de IA para una tarea repetitiva | Agente acotado a una tarea concreta del cliente | LinkedIn y recomendaciones de clientes anteriores | Ofrecerlo solo después de una primera venta, por su mayor esfuerzo | por cotizar |
 
-| # | Oferta | Precio de prueba | Ventas para USD 240 | Vel. | Esf. | Marg. | Riesgo | Total |
-|---|--------|------------------|---------------------|------|------|-------|--------|-------|
-| 1 | Diagnóstico Financiero Express (ingresos, costos, gastos, 3 acciones) | USD 60 | 4 | 5 | 4 | 4 | 4 | 17 |
-| 2 | Tablero de KPIs en Sheets/Excel para pyme o independiente | USD 120 | 2 | 3 | 3 | 5 | 4 | 15 |
-| 3 | Automatización de un reporte recurrente con Python (consolidar planillas) | USD 150 | 2 | 2 | 3 | 5 | 3 | 13 |
-| 4 | Plantilla de flujo de caja y cobranza (13 semanas) | USD 80 | 3 | 4 | 4 | 3 | 4 | 15 |
-
-Recomendación: pilotear **#1 y #2** primero (el #2 como mejora del #1 para quien quiera seguimiento continuo).
+## Embudo de venta (lo que se mide)
+Contactos relevantes → respuestas → reuniones o entrevistas → propuestas → ventas cobradas → neto acumulado frente a la meta.
 
 ## Plan de 14 días
-1. Días 1–2: lista de 20 prospectos pertinentes que Maximilian ya conoce o puede contactar; guion de 5 entrevistas cortas.
-2. Días 3–5: demo con datos ficticios, oferta de precio fijo y alcance escrito (sin asesoría tributaria ni de inversión).
-3. Días 6–10: contactos autorizados por Maximilian, registro de respuestas, cobro del piloto antes de entregar.
-4. Días 11–14: entregar pilotos vendidos, pedir comentarios, calcular utilidad neta y decidir si repetir, subir precio o cambiar nicho.
+1. Días 1–2: Maximilian elige a quién contactar (lista de 20 personas pertinentes). Claude prepara el guion de contacto y las preguntas de entrevista.
+2. Días 3–5: Claude arma el demo con datos ficticios y la oferta de precio fijo con alcance escrito (sin asesoría tributaria ni de inversión).
+3. Días 6–10: contactos autorizados por Maximilian, registro de respuestas en el embudo, cobro del piloto antes de entregar.
+4. Días 11–14: entrega de los pilotos vendidos, comentarios, cálculo del neto y decisión: repetir, subir precio o cambiar canal o producto.
 
-## Qué hace Claude / qué hace Maximilian
-- Claude: plantillas, demo, tablero, análisis de los datos que el cliente entregue, QA técnico, documentación.
-- Maximilian: aprobar precios y alcance, contactar prospectos, cobrar, autorizar cualquier gasto o despliegue.
+## Responsabilidades
+- Claude: guiones, demo, producto, análisis de los datos que entregue el cliente, QA técnico y actualización de la página de indicadores.
+- Maximilian: elegir a quién contactar, aprobar precios y alcance, contactar, cobrar y autorizar cualquier gasto o despliegue.
 - ChatGPT: evaluación comercial, validación de supuestos, QA y consolidación en `PLAN_CONSOLIDADO.md`.
 
-## Indicadores de seguimiento
-Contactos, respuestas, entrevistas, propuestas enviadas, ventas cobradas, comisiones, costos incrementales, horas, **neto acumulado vs USD 240**.
-
 ## Criterio de decisión
-Si tras 20 contactos relevantes no hay interés verificable, cambiar nicho u oferta antes de desarrollar más. Si 2 ventas cobradas, repetir la oferta ganadora.
+Si tras 20 contactos relevantes no hay interés verificable, cambiar el canal o el producto antes de desarrollar más. Si hay dos ventas cobradas de un mismo producto, repetirlo.
 
 ## Límites
 Sin gastos, mensajes a terceros, despliegues ni cambios a la app principal sin aprobación específica. Sin datos sensibles de clientes en GitHub.
