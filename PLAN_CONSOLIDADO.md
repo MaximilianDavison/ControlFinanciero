@@ -29,3 +29,40 @@ Estado: **Provisional; pendiente de contrastar los planes originales y de aproba
 
 ## Mensaje a Claude
 Claude: revisa este consolidado provisional. Corrige cualquier discrepancia con tu plan original y el mandato. Propón la definición concreta de ambas ofertas sin inventar precios aprobados; deja constancia de los cambios y de los puntos pendientes. No declares terminado el alcance hasta que existan pruebas de cumplimiento.
+
+---
+
+# Revisión de Claude — 2026-11-02
+
+## Discrepancias corregidas
+1. **Ubicación de los planes:** ambos están en `propuestas/` (no en la raíz): `propuestas/CHATGPT_PLAN.md` y `propuestas/CLAUDE_PLAN.md` (versión V2). Ya fueron contrastados; el primer criterio de cierre queda cumplido.
+2. **Primer objetivo precisado por el propietario:** cómo generar la venta, con los productos que Claude entrega. El plan de Claude V2 parte de productos, un canal por producto y un embudo medible; el ranking de ofertas pasó a ser apoyo.
+3. **Cantidad de ofertas:** el plan de Claude lista cuatro productos; las **dos que se pilotean primero** son las prioridades 1 y 2 (abajo).
+4. **Precios:** los valores de ambos planes son **hipótesis**, no precios aprobados. Quedan pendientes de aprobación del propietario.
+5. **Origen de las prioridades:** el orden de los productos es criterio de Claude (menor esfuerzo y riesgo primero), no un dato de mercado.
+
+## Definición concreta de las dos ofertas (sin precio aprobado)
+**Oferta A — Diagnóstico Financiero Express**
+- Entregables: resumen de ingresos, costos, gastos y saldo; clasificación de partidas principales; tres recomendaciones operativas; sesión de entrega de 20 minutos.
+- Plazo: según `productos/diagnostico-financiero-express/README.md`, 48 horas hábiles tras recibir la información completa.
+- Límites: sin asesoría tributaria, contable regulada ni recomendaciones de inversión; sin claves bancarias ni accesos a bancos.
+- Precio: hipótesis de USD 60 en ambos planes. **Pendiente de aprobación.**
+- Canal inicial: contacto directo en la red del propietario.
+
+**Oferta B — Tablero de KPIs en Sheets/Excel**
+- Entregables: tablero con los indicadores clave del negocio del cliente, sobre la planilla que el cliente ya use; una sesión breve de entrega.
+- Plazo y alcance exacto: **por definir con el propietario** tras las primeras conversaciones.
+- Límites: los mismos de la Oferta A; la app ControlFinanciero no es requisito.
+- Precio: hipótesis de USD 120 (el plan de ChatGPT menciona una implementación personalizada a ese valor). **Pendiente de aprobación.**
+- Canal inicial: LinkedIn con un demo sin datos reales.
+
+## Estado de los criterios de cierre
+- [x] Localizar y contrastar ambos planes originales.
+- [ ] Definir las dos ofertas con precios aprobados (definidas arriba; faltan precios y plazo de la Oferta B).
+- [ ] Preparar materiales de venta y demo con datos ficticios (a cargo de Claude, tras la aprobación del alcance).
+- [ ] Ejecutar contacto comercial y registrar resultados verificables (a cargo del propietario).
+- [ ] Documentar la decisión de continuar, ajustar o descartar cada oferta.
+
+## Pendientes
+- El propietario aprueba precios, alcance y la lista de contactos.
+- No hay cobros ni contactos registrados; todos los indicadores están en cero. Esta fase **no está terminada**.
