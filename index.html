@@ -5,6 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orden financiero</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js">
+// Catálogo extensible de productos; distinto de simulaciones y del libro mayor.
+var PRODUCTOS_CREDITO=[
+ {id:'tenpo-tc-20261108',institucion:'Tenpo',producto:'Tarjeta de crédito',fecha:'2026-11-08',cupo:900000,utilizado:20615,disponible:879385,facturacion:'20/11/2026',vencimiento:'05/12/2026',interes:null,cae:null,mantencion:null,evidencia:'registros/2026-11-08-tenpo-tarjeta-credito.md'}
+];
+function renderProductosCredito(){
+ var sel=document.getElementById('producto-selector'),out=document.getElementById('producto-detalle');
+ if(!sel||!out)return;
+ sel.innerHTML='';PRODUCTOS_CREDITO.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.institucion+' — '+p.producto;sel.appendChild(o)});
+ function draw(){
+ var p=PRODUCTOS_CREDITO.find(function(x){return x.id===sel.value});if(!p)return;
+ var u=p.cupo>0?p.utilizado/p.cupo*100:0;
+ var ok=Math.abs(p.cupo-p.utilizado-p.disponible)<1;
+ var fmt=function(v){return v===null||v===undefined?'Por confirmar':String(v)};
+ out.innerHTML='<p class="sub">Observado: '+p.fecha+' · Estado: ficha informativa</p>'+
+ '<div class="kpis"><div class="kpi"><small>Cupo total</small><b>'+fm.format(p.cupo)+'</b></div>'+
+ '<div class="kpi"><small>Utilizado</small><b>'+fm.format(p.utilizado)+'</b></div>'+
+ '<div class="kpi"><small>Disponible</small><b>'+fm.format(p.disponible)+'</b></div>'+
+ '<div class="kpi"><small>Utilización</small><b>'+u.toFixed(2).replace('.',',')+'%</b></div></div>'+
+ '<p>Facturación: <strong>'+p.facturacion+'</strong> · Vencimiento: <strong>'+p.vencimiento+'</strong></p>'+
+ '<p>Interés: <strong>'+fmt(p.interes)+'</strong> · CAE: <strong>'+fmt(p.cae)+'</strong> · Mantención: <strong>'+fmt(p.mantencion)+'</strong></p>'+
+ '<p class="'+(ok?'ok':'bad')+'">Control de cupo: '+(ok?'cuadra':'REVISAR: no cuadra')+'</p>'+
+ '<p class="sub">El cupo no es ingreso. No duplicar el saldo utilizado como gasto si el consumo ya está registrado. No se ha confirmado un avance contratado.</p>'+
+ '<p class="sub"><a href="'+p.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha documental</a></p>';
+ }
+ sel.onchange=draw;draw();
+}
+renderProductosCredito();
 // Catálogo extensible de simulaciones; independiente de movimientos efectivos.
 var SIMULACIONES_CREDITO=[
  {id:'tenpo-20261108',institucion:'Tenpo',producto:'Avance en cuotas',fecha:'2026-11-08',capital:200000,unidad:'meses',tipo:'cuotas',primeraCuota:'05/12/2026',opciones:[{plazo:2,pago:105022},{plazo:10,pago:23843},{plazo:17,pago:15597},{plazo:24,pago:12233}],nota:'Las cuatro alternativas implican aproximadamente 3,33% mensual bajo las hipótesis indicadas. Los costos totales aumentan con el plazo. No se dispone de CAE contractual.',evidencia:'registros/2026-11-08-tenpo-avance-y-facturacion.md'},
@@ -81,13 +108,10 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 <div class="card" id="credito-simulacion">
 <h2>2. Tasa de interés y crédito</h2>
 <p class="sub">Comparador de cotizaciones por institución y producto. No representan deudas contratadas ni dinero recibido. No compara CAE oficiales; verifica condiciones contractuales antes de contratar.</p>
-<details class="card" id="tenpo-tarjeta"><summary>Ficha de producto — Tarjeta de crédito Tenpo (no es una simulación)</summary>
-<p class="sub">Datos observados el 08/11/2026; cupo y saldo sujetos a cambios. Tasas y comisiones por confirmar con el estado de cuenta y tarifario oficial.</p>
-<div class="kpis"><div class="kpi"><small>Cupo total</small><b>$900.000</b></div><div class="kpi"><small>Utilizado</small><b>$20.615</b></div><div class="kpi"><small>Disponible</small><b>$879.385</b></div><div class="kpi"><small>Utilización</small><b>2,29%</b></div></div>
-<p>Facturación: <strong>20/11/2026</strong> · Vencimiento: <strong>05/12/2026</strong>.</p>
-<p>Tasa de interés: <strong>por confirmar</strong> · CAE: <strong>por confirmar</strong> · Mantención: <strong>por confirmar</strong>.</p>
-<p class="sub">El cupo no es ingreso. El saldo utilizado no debe duplicarse con el consumo de Claude de $20.615. Esta ficha no confirma un avance contratado.</p>
-<p class="sub"><a href="registros/2026-11-08-tenpo-tarjeta-credito.md" target="_blank" rel="noopener noreferrer">Ficha documental y fuentes pendientes</a></p>
+<details class="card" id="productos-credito"><summary>Tarjetas y líneas de crédito — fichas de producto</summary>
+<p class="sub">Información observada, no necesariamente vigente. No confundir cupos con ingresos ni saldos con gastos nuevos.</p>
+<div class="row"><label>Producto <select id="producto-selector"></select></label></div>
+<div id="producto-detalle"></div>
 </details>
 <div class="row"><label>Simulación <select id="sim-selector"></select></label></div>
 <div id="sim-detalle"></div>
