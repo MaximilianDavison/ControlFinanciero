@@ -4,55 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orden financiero</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js">
-// Catálogo extensible de productos; distinto de simulaciones y del libro mayor.
-var PRODUCTOS_CREDITO=[
- {id:'tenpo-tc-20261108',institucion:'Tenpo',producto:'Tarjeta de crédito',fecha:'2026-11-08',cupo:900000,utilizado:20615,disponible:879385,facturacion:'20/11/2026',vencimiento:'05/12/2026',interes:null,cae:null,mantencion:null,evidencia:'registros/2026-11-08-tenpo-tarjeta-credito.md'}
-];
-function renderProductosCredito(){
- var sel=document.getElementById('producto-selector'),out=document.getElementById('producto-detalle');
- if(!sel||!out)return;
- sel.innerHTML='';PRODUCTOS_CREDITO.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.institucion+' — '+p.producto;sel.appendChild(o)});
- function draw(){
- var p=PRODUCTOS_CREDITO.find(function(x){return x.id===sel.value});if(!p)return;
- var u=p.cupo>0?p.utilizado/p.cupo*100:0;
- var ok=Math.abs(p.cupo-p.utilizado-p.disponible)<1;
- var fmt=function(v){return v===null||v===undefined?'Por confirmar':String(v)};
- out.innerHTML='<p class="sub">Observado: '+p.fecha+' · Estado: ficha informativa</p>'+
- '<div class="kpis"><div class="kpi"><small>Cupo total</small><b>'+fm.format(p.cupo)+'</b></div>'+
- '<div class="kpi"><small>Utilizado</small><b>'+fm.format(p.utilizado)+'</b></div>'+
- '<div class="kpi"><small>Disponible</small><b>'+fm.format(p.disponible)+'</b></div>'+
- '<div class="kpi"><small>Utilización</small><b>'+u.toFixed(2).replace('.',',')+'%</b></div></div>'+
- '<p>Facturación: <strong>'+p.facturacion+'</strong> · Vencimiento: <strong>'+p.vencimiento+'</strong></p>'+
- '<p>Interés: <strong>'+fmt(p.interes)+'</strong> · CAE: <strong>'+fmt(p.cae)+'</strong> · Mantención: <strong>'+fmt(p.mantencion)+'</strong></p>'+
- '<p class="'+(ok?'ok':'bad')+'">Control de cupo: '+(ok?'cuadra':'REVISAR: no cuadra')+'</p>'+
- '<p class="sub">El cupo no es ingreso. No duplicar el saldo utilizado como gasto si el consumo ya está registrado. No se ha confirmado un avance contratado.</p>'+
- '<p class="sub"><a href="'+p.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha documental</a></p>';
- }
- sel.onchange=draw;draw();
-}
-renderProductosCredito();
-// Catálogo extensible de simulaciones; independiente de movimientos efectivos.
-var SIMULACIONES_CREDITO=[
- {id:'tenpo-20261108',institucion:'Tenpo',producto:'Avance en cuotas',fecha:'2026-11-08',capital:200000,unidad:'meses',tipo:'cuotas',primeraCuota:'05/12/2026',opciones:[{plazo:2,pago:105022},{plazo:10,pago:23843},{plazo:17,pago:15597},{plazo:24,pago:12233}],nota:'Las cuatro alternativas implican aproximadamente 3,33% mensual bajo las hipótesis indicadas. Los costos totales aumentan con el plazo. No se dispone de CAE contractual.',evidencia:'registros/2026-11-08-tenpo-avance-y-facturacion.md'},
- {id:'mercadopago-20261108',institucion:'Mercado Pago / Mercado Libre',producto:'Dinero Plus',fecha:'2026-11-08',capital:31000,unidad:'días',tipo:'pago-unico',opciones:[{plazo:7,pago:31342},{plazo:14,pago:31624},{plazo:21,pago:31906},{plazo:28,pago:32188}],nota:'Oferta observada: cupo de crédito para compras $136.000 y mención de $31.000 adicionales en Dinero Plus. El posible primer pago 06/12 corresponde a compras sujetas a condiciones, no necesariamente a Dinero Plus. No consta CAE ni contratación.',evidencia:'registros/2026-11-08-mercadopago-dinero-plus.md'},
- {id:'mach-20261108',institucion:'MACH / Bci',producto:'Crédito de consumo',fecha:'2026-11-08',capital:4037370,unidad:'meses',tipo:'cuotas',primeraCuota:'10/12/2026',opciones:[{plazo:60,pago:130674}],tasaInformada:'2,45% (periodicidad no especificada en captura)',caeInformada:'30,02% anual',nota:'Simulación de 60 cuotas. La captura indica “Sin costos asociados” al seleccionar el primer pago; no implica ausencia de intereses ni de otros cargos. Verificar contrato, CAE, impuestos y monto total antes de contratar.',evidencia:'registros/2026-11-08-mach-credito-consumo.md'}
-];
-function renderSimulaciones(){
- var sel=document.getElementById('sim-selector'),out=document.getElementById('sim-detalle');if(!sel||!out)return;
- sel.innerHTML=SIMULACIONES_CREDITO.map(function(s){return '<option value="'+s.id+'">'+s.institucion+' — '+s.producto+' ('+fm.format(s.capital)+')</option>'}).join('');
- function tasa(n,p,capital){if(!(n>0&&p>0&&capital>0))return null;if(Math.abs(n*p-capital)<0.001)return 0;if(n*p<capital)return null;var lo=0,hi=1;for(var k=0;k<80;k++){var m=(lo+hi)/2;var pv=p*(1-Math.pow(1+m,-n))/m;if(pv>capital)lo=m;else hi=m;}return (lo+hi)/2}
- function draw(){var s=SIMULACIONES_CREDITO.find(function(x){return x.id===sel.value});if(!s)return;
- var head=s.tipo==='cuotas'?'Cuota mensual':'Pago único';
- var rows=s.opciones.map(function(o){var total=s.tipo==='cuotas'?o.plazo*o.pago:o.pago,extra=total-s.capital;
- var t=s.tipo==='cuotas'?tasa(o.plazo,o.pago,s.capital):null;var rate=t===null?'No calculada':(t*100).toFixed(2).replace('.',',')+'% mensual implícita';var sobrecosto=s.capital>0?(extra/s.capital*100).toFixed(2).replace('.',',')+'%':'—';
- return '<tr><td>'+o.plazo+' '+s.unidad+'</td><td>'+fm.format(o.pago)+'</td><td>'+fm.format(total)+'</td><td>'+fm.format(extra)+' ('+sobrecosto+')</td><td>'+rate+'</td></tr>'}).join('');
- out.innerHTML='<h2>'+s.institucion+' — '+s.producto+'</h2><p class="sub">Capital simulado: '+fm.format(s.capital)+' · Fecha de captura: '+s.fecha+' · Estado: simulación, no contratado'+(s.tasaInformada?' · Tasa informada: '+s.tasaInformada:'')+(s.caeInformada?' · CAE informada: '+s.caeInformada:'')+(s.primeraCuota?' · Primera cuota indicada: '+s.primeraCuota:'')+'</p><div class="sc"><table><thead><tr><th>Plazo</th><th>'+head+'</th><th>Total a devolver</th><th>Costo adicional</th><th>Tasa mensual implícita*</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="sub">*Solo para préstamos en cuotas mensuales: estimación financiera suponiendo desembolso completo, cuotas iguales al final de cada mes y sin cargos fuera de la cuota. Para pago único en días, no se estima tasa mensual ni CAE.</p><p class="sub">'+s.nota+'</p><p class="sub"><a href="'+s.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha de evidencia</a>. Capturas originales entregadas en la conversación, no almacenadas en este repositorio.</p>';
- }
- sel.onchange=draw;draw();
-}
-renderSimulaciones();
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <style>
@@ -346,6 +298,55 @@ else{
   }else{UID=null;S=null;$('app').hidden=true;$('bar').hidden=true;$('lg').hidden=false;cs_('')}
  },0)});
 }
+
+// Catálogo extensible de productos; distinto de simulaciones y del libro mayor.
+var PRODUCTOS_CREDITO=[
+ {id:'tenpo-tc-20261108',institucion:'Tenpo',producto:'Tarjeta de crédito',fecha:'2026-11-08',cupo:900000,utilizado:20615,disponible:879385,facturacion:'20/11/2026',vencimiento:'05/12/2026',interes:null,cae:null,mantencion:null,evidencia:'registros/2026-11-08-tenpo-tarjeta-credito.md'}
+];
+function renderProductosCredito(){
+ var sel=document.getElementById('producto-selector'),out=document.getElementById('producto-detalle');
+ if(!sel||!out)return;
+ sel.innerHTML='';PRODUCTOS_CREDITO.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.institucion+' — '+p.producto;sel.appendChild(o)});
+ function draw(){
+ var p=PRODUCTOS_CREDITO.find(function(x){return x.id===sel.value});if(!p)return;
+ var u=p.cupo>0?p.utilizado/p.cupo*100:0;
+ var ok=Math.abs(p.cupo-p.utilizado-p.disponible)<1;
+ var fmt=function(v){return v===null||v===undefined?'Por confirmar':String(v)};
+ out.innerHTML='<p class="sub">Observado: '+p.fecha+' · Estado: ficha informativa</p>'+
+ '<div class="kpis"><div class="kpi"><small>Cupo total</small><b>'+fm.format(p.cupo)+'</b></div>'+
+ '<div class="kpi"><small>Utilizado</small><b>'+fm.format(p.utilizado)+'</b></div>'+
+ '<div class="kpi"><small>Disponible</small><b>'+fm.format(p.disponible)+'</b></div>'+
+ '<div class="kpi"><small>Utilización</small><b>'+u.toFixed(2).replace('.',',')+'%</b></div></div>'+
+ '<p>Facturación: <strong>'+p.facturacion+'</strong> · Vencimiento: <strong>'+p.vencimiento+'</strong></p>'+
+ '<p>Interés: <strong>'+fmt(p.interes)+'</strong> · CAE: <strong>'+fmt(p.cae)+'</strong> · Mantención: <strong>'+fmt(p.mantencion)+'</strong></p>'+
+ '<p class="'+(ok?'ok':'bad')+'">Control de cupo: '+(ok?'cuadra':'REVISAR: no cuadra')+'</p>'+
+ '<p class="sub">El cupo no es ingreso. No duplicar el saldo utilizado como gasto si el consumo ya está registrado. No se ha confirmado un avance contratado.</p>'+
+ '<p class="sub"><a href="'+p.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha documental</a></p>';
+ }
+ sel.onchange=draw;draw();
+}
+renderProductosCredito();
+// Catálogo extensible de simulaciones; independiente de movimientos efectivos.
+var SIMULACIONES_CREDITO=[
+ {id:'tenpo-20261108',institucion:'Tenpo',producto:'Avance en cuotas',fecha:'2026-11-08',capital:200000,unidad:'meses',tipo:'cuotas',primeraCuota:'05/12/2026',opciones:[{plazo:2,pago:105022},{plazo:10,pago:23843},{plazo:17,pago:15597},{plazo:24,pago:12233}],nota:'Las cuatro alternativas implican aproximadamente 3,33% mensual bajo las hipótesis indicadas. Los costos totales aumentan con el plazo. No se dispone de CAE contractual.',evidencia:'registros/2026-11-08-tenpo-avance-y-facturacion.md'},
+ {id:'mercadopago-20261108',institucion:'Mercado Pago / Mercado Libre',producto:'Dinero Plus',fecha:'2026-11-08',capital:31000,unidad:'días',tipo:'pago-unico',opciones:[{plazo:7,pago:31342},{plazo:14,pago:31624},{plazo:21,pago:31906},{plazo:28,pago:32188}],nota:'Oferta observada: cupo de crédito para compras $136.000 y mención de $31.000 adicionales en Dinero Plus. El posible primer pago 06/12 corresponde a compras sujetas a condiciones, no necesariamente a Dinero Plus. No consta CAE ni contratación.',evidencia:'registros/2026-11-08-mercadopago-dinero-plus.md'},
+ {id:'mach-20261108',institucion:'MACH / Bci',producto:'Crédito de consumo',fecha:'2026-11-08',capital:4037370,unidad:'meses',tipo:'cuotas',primeraCuota:'10/12/2026',opciones:[{plazo:60,pago:130674}],tasaInformada:'2,45% (periodicidad no especificada en captura)',caeInformada:'30,02% anual',nota:'Simulación de 60 cuotas. La captura indica “Sin costos asociados” al seleccionar el primer pago; no implica ausencia de intereses ni de otros cargos. Verificar contrato, CAE, impuestos y monto total antes de contratar.',evidencia:'registros/2026-11-08-mach-credito-consumo.md'}
+];
+function renderSimulaciones(){
+ var sel=document.getElementById('sim-selector'),out=document.getElementById('sim-detalle');if(!sel||!out)return;
+ sel.innerHTML=SIMULACIONES_CREDITO.map(function(s){return '<option value="'+s.id+'">'+s.institucion+' — '+s.producto+' ('+fm.format(s.capital)+')</option>'}).join('');
+ function tasa(n,p,capital){if(!(n>0&&p>0&&capital>0))return null;if(Math.abs(n*p-capital)<0.001)return 0;if(n*p<capital)return null;var lo=0,hi=1;for(var k=0;k<80;k++){var m=(lo+hi)/2;var pv=p*(1-Math.pow(1+m,-n))/m;if(pv>capital)lo=m;else hi=m;}return (lo+hi)/2}
+ function draw(){var s=SIMULACIONES_CREDITO.find(function(x){return x.id===sel.value});if(!s)return;
+ var head=s.tipo==='cuotas'?'Cuota mensual':'Pago único';
+ var rows=s.opciones.map(function(o){var total=s.tipo==='cuotas'?o.plazo*o.pago:o.pago,extra=total-s.capital;
+ var t=s.tipo==='cuotas'?tasa(o.plazo,o.pago,s.capital):null;var rate=t===null?'No calculada':(t*100).toFixed(2).replace('.',',')+'% mensual implícita';var sobrecosto=s.capital>0?(extra/s.capital*100).toFixed(2).replace('.',',')+'%':'—';
+ return '<tr><td>'+o.plazo+' '+s.unidad+'</td><td>'+fm.format(o.pago)+'</td><td>'+fm.format(total)+'</td><td>'+fm.format(extra)+' ('+sobrecosto+')</td><td>'+rate+'</td></tr>'}).join('');
+ out.innerHTML='<h2>'+s.institucion+' — '+s.producto+'</h2><p class="sub">Capital simulado: '+fm.format(s.capital)+' · Fecha de captura: '+s.fecha+' · Estado: simulación, no contratado'+(s.tasaInformada?' · Tasa informada: '+s.tasaInformada:'')+(s.caeInformada?' · CAE informada: '+s.caeInformada:'')+(s.primeraCuota?' · Primera cuota indicada: '+s.primeraCuota:'')+'</p><div class="sc"><table><thead><tr><th>Plazo</th><th>'+head+'</th><th>Total a devolver</th><th>Costo adicional</th><th>Tasa mensual implícita*</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="sub">*Solo para préstamos en cuotas mensuales: estimación financiera suponiendo desembolso completo, cuotas iguales al final de cada mes y sin cargos fuera de la cuota. Para pago único en días, no se estima tasa mensual ni CAE.</p><p class="sub">'+s.nota+'</p><p class="sub"><a href="'+s.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha de evidencia</a>. Capturas originales entregadas en la conversación, no almacenadas en este repositorio.</p>';
+ }
+ sel.onchange=draw;draw();
+}
+renderSimulaciones();
+
 </script>
 </body>
 </html>
