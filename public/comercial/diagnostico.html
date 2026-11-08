@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnóstico Financiero Express</title><meta name="robots" content="noindex"><link rel="stylesheet" href="style.css"></head>
+<body><a class="skip" href="#main">Saltar al contenido</a>
+<div class="aviso">Borrador interno para revisión. Precios sin aprobar. Los datos de ejemplo son ficticios.</div>
+<header class="top"><div class="bar"><a class="marca" href="index.html">Orden financiero · servicios</a><nav aria-label="Principal"><ul><li><a href="index.html">Inicio</a></li><li><a href="diagnostico.html" aria-current="page">Diagnóstico</a></li><li><a href="tablero.html">Tablero demo</a></li><li><a href="plan.html">Plan</a></li></ul></nav></div></header>
+<main id="main">
+
+<section><span class="badge b-hip">Oferta A · USD 60 hipótesis</span>
+<h1>Diagnóstico Financiero Express</h1>
+<p class="lead">Un resumen claro de un mes de movimientos y tres acciones concretas. Abajo hay un informe de ejemplo.</p></section>
+<section class="grid">
+<div class="card"><h2>Alcance</h2><ul><li>Resumen de ingresos, costos, gastos y saldo</li><li>Clasificación de partidas principales</li><li>Tres recomendaciones operativas</li><li>Sesión de entrega de 20 minutos</li></ul><p><b>Plazo propuesto:</b> 48 horas hábiles desde la información completa.</p></div>
+<div class="card"><h2>Aviso de privacidad</h2><p>Solo pedimos movimientos de un período, de forma voluntaria. No pedimos claves ni accesos a bancos, ni cuentas completas. Los datos no se publican. Este ejemplo usa datos inventados.</p><p class="mut">No es asesoría tributaria, contable regulada ni recomendación de inversión.</p></div>
+</section>
+<section class="card" aria-labelledby="inf"><span class="badge b-fic">Ejemplo con datos ficticios</span>
+<h2 id="inf" style="margin-top:8px">Informe: Cliente Demo, <span id="per"></span></h2>
+<p class="mut">Moneda: pesos chilenos (CLP). Fuente: movimientos facilitados por el cliente, no auditados.</p>
+<div class="kpis" id="kpis"></div>
+<h3 style="margin-top:20px">A dónde se fue cada peso de ingreso</h3>
+<div class="stack" id="stack" role="img" aria-label="Distribución de los ingresos entre inversión, costos, gastos y saldo"></div><div class="leg" id="leg"></div>
+<h3 style="margin-top:20px">Hallazgos</h3><ol id="hall"></ol>
+<h3>Acciones recomendadas</h3>
+<div class="scroll"><table><thead><tr><th>Acción</th><th>Impacto esperado</th><th>Esfuerzo</th><th>Prioridad</th></tr></thead><tbody id="acc"></tbody></table></div>
+<p class="mut" style="margin-top:14px"><b>Alcance y limitaciones.</b> Este informe organiza información suministrada por el cliente y no verifica su exactitud. No constituye auditoría, asesoría tributaria ni recomendación de inversión. No se garantizan ahorros ni ingresos.</p>
+<p class="mut" id="conc"></p></section>
+<div class="acts"><a class="btn p" href="tablero.html">Ver el tablero demo</a><a class="btn" href="index.html">Volver al inicio</a></div>
+</main>
+<footer>Borrador generado por Claude (issue #2). No es una oferta pública ni incluye pasarela de pago. Fuente técnica: archivos Markdown en <code>propuestas/</code> y <code>productos/</code>.</footer>
+<script src="data.js"></script><script>
+(function(){var D=DEMO,T=D.tot,f=D.fmt;
+document.getElementById("per").textContent=D.periodo;
+var k=[["Ingresos",T.ing,"Dos proyectos y una mantención"],["Inversión",T.inv,"Un curso"],["Costos",T.cos,D.pct(T.cos,T.ing)+" de los ingresos"],["Gastos",T.gas,"Incluye 65.000 sin clasificar"],["Saldo disponible",T.sal,"No es dinero en banco"]];
+document.getElementById("kpis").innerHTML=k.map(function(x){return '<div class="kpi"><span>'+x[0]+'</span><b>$'+f(x[1])+'</b><br><small>'+x[2]+'</small></div>'}).join("");
+var s=[["c-inv","Inversión",T.inv],["c-cos","Costos",T.cos],["c-gas","Gastos",T.gas],["c-sal","Saldo",T.sal]];
+document.getElementById("stack").innerHTML=s.map(function(x){return '<i class="'+x[0]+'" style="width:'+(x[2]/T.ing*100)+'%;background:var(--c)" title="'+x[1]+' '+D.pct(x[2],T.ing)+'"></i>'}).join("");
+document.getElementById("leg").innerHTML=s.map(function(x){return '<span class="'+x[0]+'">'+x[1]+' '+D.pct(x[2],T.ing)+'</span>'}).join("");
+var m=D.movs,big=Math.max.apply(null,m.filter(function(x){return x.t==="Ingreso"}).map(function(x){return x.m}));
+var rec=m.filter(function(x){return x.rec}).reduce(function(a,x){return a+x.m},0);
+var fijos=m.filter(function(x){return x.fijo}).reduce(function(a,x){return a+x.m},0);
+var sinc=m.filter(function(x){return x.sinc}).reduce(function(a,x){return a+x.m},0);
+var susc=m.filter(function(x){return x.susc}).reduce(function(a,x){return a+x.m},0);
+document.getElementById("hall").innerHTML=
+'<li><b>Un proyecto concentra gran parte del ingreso.</b> El mayor aporta '+f(big)+' de '+f(T.ing)+' ('+D.pct(big,T.ing)+'); solo '+f(rec)+' ('+D.pct(rec,T.ing)+') es recurrente.</li>'+
+'<li><b>Los costos fijos mensuales pesan.</b> Arriendo, contador, internet, suscripciones y hosting suman '+f(fijos)+' ('+D.pct(fijos,T.ing)+' de los ingresos).</li>'+
+'<li><b>Hay gasto sin clasificar.</b> '+f(sinc)+' ('+D.pct(sinc,T.gas)+' de los gastos) no tiene categoría, así que no se sabe si es evitable.</li>';
+document.getElementById("acc").innerHTML=
+'<tr><td>Clasificar los '+f(sinc)+' sin categoría durante el próximo mes</td><td>Permite decidir qué parte es evitable. No se estima ahorro hasta clasificar.</td><td>Bajo</td><td>1</td></tr>'+
+'<tr><td>Ofrecer a clientes de proyecto un servicio de mantención mensual</td><td>Con un segundo cliente de mantención al valor actual, el ingreso recurrente subiría de '+f(rec)+' a '+f(rec*2)+' (supuesto: el cliente acepta; no está garantizado).</td><td>Medio</td><td>2</td></tr>'+
+'<tr><td>Revisar las suscripciones de software ('+f(susc)+') y desactivar las que no se usen</td><td>Cada una desactivada baja el costo mensual por su valor (supuesto: no afecta la operación).</td><td>Bajo</td><td>3</td></tr>';
+document.getElementById("conc").textContent="Control: los totales concilian con las "+m.length+" filas de movimientos_demo.csv y el saldo es ingresos − inversión − costos − gastos.";
+})();</script>
+</body></html>
