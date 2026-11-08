@@ -50,3 +50,7 @@ La cartola bancaria o estado de cuenta definitivo es una **fuente primaria de ve
 
 ### Cómo aportar cartolas mientras no exista el módulo
 Descargar la cartola oficial desde la aplicación o banca web de la institución (normalmente en «Movimientos», «Cartolas» o «Estados de cuenta») y adjuntar el PDF o CSV directamente en una conversación privada para analizarlo y preparar una importación revisada. Evitar compartir contraseñas, PIN o códigos de seguridad. Antes de subir, ocultar identificadores personales que no sean necesarios. La carga directa en la aplicación ControlFinanciero **aún no está implementada**.
+
+## Auditoría de tasas (08-11-2026)
+
+Con capital $200.000 y cuotas mensuales vencidas iguales, la tasa interna implícita de las cuatro alternativas es aproximadamente **3,33% mensual** (variaciones mínimas por redondeo de cuotas). Esto es una estimación matemática y **no** una tasa contractual, CAE ni desglose de intereses, impuestos y comisiones. El sobrecosto acumulado de 5,022% a 46,796% no debe confundirse con tasas mensuales o anuales. La fecha de primera cuota 05-12-2026 es la indicada por la aplicación, no confirmación de desembolso.
