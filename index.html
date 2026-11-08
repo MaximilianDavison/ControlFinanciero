@@ -1,352 +1,195 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Orden financiero</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<style>
-:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#667085;--bd:#e3e6ec;--acc:#3b7ddd;--ok:#2e9e6b;--bad:#d65a5a;color-scheme:light;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--card:#1d222b;--tx:#e8ebf0;--mut:#9aa3b2;--bd:#2c3340;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#14171d;--card:#1d222b;--tx:#e8ebf0;--mut:#9aa3b2;--bd:#2c3340;color-scheme:dark}
-[hidden]{display:none!important}*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 Arial,Helvetica,sans-serif}
-main{max-width:1150px;margin:0 auto;padding:16px}
-h1{font-size:20px;margin:0 0 2px}h2{font-size:15px;margin:0 0 10px}
-.sub{color:var(--mut);margin:0 0 12px;font-size:13px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px}
-.kpi{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;border-left:4px solid var(--bd)}
-.kpi small{color:var(--mut);display:block}.kpi b{font-size:17px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:800px){.grid{grid-template-columns:1fr}}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.row label{color:var(--mut);font-size:12px}
-input,select,button,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px}
-button{cursor:pointer}button.p{background:var(--acc);border-color:var(--acc);color:#fff}
-.sc{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:620px}
-th{text-align:left;color:var(--mut);font-weight:600;padding:4px}td{padding:3px}
-td input,td select{width:100%}td.n input{text-align:right}
-tr.inv input,tr.inv select{border-color:var(--bad)}
-.ch{position:relative;height:290px}
-.ok{color:var(--ok)}.bad{color:var(--bad)}
-#st{font-size:13px;margin:0 0 14px}summary{cursor:pointer;font-weight:600}
-</style>
+<meta name="description" content="Control visual de ingresos, costos y gastos, comparador de financiamiento y medidor de cuánto de tus cifras tiene evidencia. Sin datos de ejemplo.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main>
-<h1>Orden financiero</h1>
-<p class="sub">Teorema: Ingresos − Inversión − Costos − Gastos = 0. Edita los datos y todo se recalcula; se guarda en tu cuenta de Supabase.</p>
-<div class="card" id="lg" hidden><h2>Iniciar sesión</h2><div class="row"><input id="em" type="email" placeholder="Correo" autocomplete="username"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button class="p" id="in">Entrar</button><button id="up">Crear cuenta</button></div><p class="bad" id="lm"></p></div>
-<div class="row" id="bar" hidden><span id="who" class="sub"></span><button id="so">Cerrar sesión</button></div>
-<p id="cs" class="sub"></p>
-<div id="app" hidden>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header class="top"><div class="wrap">
+  <div class="brand">
+    <svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--brand)"/><rect x="8" y="11" width="18" height="3.2" rx="1.6" fill="var(--brand-ink)"/><rect x="8" y="19.5" width="18" height="3.2" rx="1.6" fill="var(--brand-ink)"/></svg>
+    <div><h1>Orden financiero</h1><p>Cada peso con destino y con evidencia</p></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button role="tab" id="tab-control" aria-controls="p-control" data-tab="control">Control</button>
+    <button role="tab" id="tab-financiamiento" aria-controls="p-financiamiento" data-tab="financiamiento">Financiamiento</button>
+    <button role="tab" id="tab-brecha" aria-controls="p-brecha" data-tab="brecha">Brecha de evidencia</button>
+  </nav>
+</div></header>
 
-<div class="card">
-<div class="row">
-<label>Desde <input type="date" id="d1"></label>
-<label>Hasta <input type="date" id="d2"></label>
-<label>Inversión <select id="au"><option value="1">Automática (remanente)</option><option value="0">Solo la que registro</option></select></label>
-<label>Saldo ahorro ($) <input type="number" id="ps" style="width:120px"></label>
-<label>Tasa anual (%) <input type="number" step="0.1" id="pt" style="width:80px"></label>
-<label>Fondo objetivo (meses) <input type="number" id="pm" style="width:70px"></label>
-</div>
-<div class="kpis" id="kpis"></div>
-<p id="st"></p>
-</div>
+<main id="main" class="wrap">
+  <div id="aviso-guardado" class="note bad" hidden role="alert">Este navegador no permite guardar datos: lo que registres se perderá al cerrar la página. Exporta un respaldo con frecuencia.</div>
+  <div id="migr" hidden></div>
 
-<div class="card" id="credito-simulacion">
-<h2>2. Tasa de interés y crédito</h2>
-<p class="sub">Comparador de cotizaciones por institución y producto. No representan deudas contratadas ni dinero recibido. No compara CAE oficiales; verifica condiciones contractuales antes de contratar.</p>
-<details class="card" id="productos-credito"><summary>Tarjetas y líneas de crédito — fichas de producto</summary>
-<p class="sub">Información observada, no necesariamente vigente. No confundir cupos con ingresos ni saldos con gastos nuevos.</p>
-<div class="row"><label>Producto <select id="producto-selector"></select></label></div>
-<div id="producto-detalle"></div>
-</details>
-<div class="row"><label>Simulación <select id="sim-selector"></select></label></div>
-<div id="sim-detalle"></div>
-<p class="sub">Catálogo de referencia definido en el código: para añadir instituciones se agrega una ficha al arreglo SIMULACIONES_CREDITO. Aún no hay formulario de alta ni sincronización de simulaciones en Supabase.</p>
-</div>
+  <!-- ===================== 1 · CONTROL ===================== -->
+  <section id="p-control" class="panel" role="tabpanel" aria-labelledby="tab-control" hidden>
+    <div class="panel-head">
+      <div><h2>Control de ingresos, inversión, costos y gastos</h2>
+        <p class="sub">Ingresos − Inversión − Costos − Gastos = lo que queda sin destino. La meta es que nada sobre sin destino y que nada falte. Esta página no trae datos de ejemplo: todo lo que ves lo registraste tú.</p></div>
+      <label class="field"><span>Período</span><select id="periodo" aria-label="Período"></select></label>
+    </div>
 
-<div class="card"><h2>Movimientos (editables)</h2>
-<div class="row">
-<input type="date" id="nf">
-<select id="nt"><option>Ingreso</option><option>Inversión</option><option>Costo</option><option>Gasto</option></select>
-<input id="nd" list="dl_Ingreso" placeholder="Concepto de sueldo" style="flex:1;min-width:160px">
-<input type="number" min="0" id="nm" placeholder="Monto ($)" style="width:130px">
-<button class="p" id="add">Agregar</button>
-<button id="reset">Restaurar datos iniciales</button>
-</div>
-<div id="dls"></div>
-<div class="sc"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Monto ($)</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
-<p class="sub" id="auto" style="margin:8px 0 0"></p>
-</div>
+    <div id="c-vacio" class="card empty" hidden>
+      <h3>Aún no hay movimientos</h3>
+      <p class="sub">Registra el primero abajo, pega filas desde Excel o importa un CSV. Cada movimiento lleva su nivel de evidencia: así sabrás después cuánto de tu panorama está respaldado.</p>
+    </div>
 
-<div class="card"><h2>Evolución en el tiempo</h2>
-<div class="row"><select id="gr"><option value="d">Por día</option><option value="m">Por mes</option></select>
-<label><input type="checkbox" id="ac"> Acumulado</label></div>
-<div class="ch"><canvas id="c1"></canvas></div>
-<p class="sub" style="margin:8px 0 0">Resultado del ejercicio = Ingresos − Costos − Gastos (lo que queda antes de invertir).</p></div>
+    <div id="c-hechos" class="card" hidden></div>
 
-<div class="grid">
-<div class="card"><h2>Top 10 descripciones</h2>
-<div class="row"><select id="tf"><option value="">Todos los tipos</option><option>Ingreso</option><option>Inversión</option><option>Costo</option><option>Gasto</option></select></div>
-<div class="ch"><canvas id="c2"></canvas></div></div>
-<div class="card"><h2>Destino de los ingresos</h2>
-<div class="ch" style="margin-top:38px"><canvas id="c3"></canvas></div></div>
-</div>
+    <div class="card" id="c-form">
+      <h3 id="m-titulo">Registrar un movimiento</h3>
+      <form id="f-mov" class="form" novalidate>
+        <label class="field"><span>Fecha</span><input id="m-fecha" type="date" required></label>
+        <label class="field"><span>Tipo</span><select id="m-tipo"><option>Ingreso</option><option>Inversión</option><option>Costo</option><option selected>Gasto</option></select></label>
+        <label class="field" style="grid-column:span 2"><span>Descripción</span><input id="m-desc" type="text" maxlength="120" autocomplete="off" placeholder="Ej.: Arriendo, Sueldo, Suscripción" required></label>
+        <label class="field"><span>Monto (CLP)</span><input id="m-monto" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required></label>
+        <label class="field"><span>Evidencia</span><select id="m-ev"></select></label>
+        <label class="field wide" id="m-doc-w" hidden><span>Documento que lo respalda</span><input id="m-doc" type="text" maxlength="120" placeholder="Ej.: Cartola Tenpo octubre 2026"></label>
+        <div class="actions" style="grid-column:1/-1"><button class="btn primary" id="m-ok" type="submit">Agregar movimiento</button><button class="btn" id="m-cancel" type="button" hidden>Cancelar edición</button><span class="msg" id="m-msg" role="status" aria-live="polite"></span></div>
+      </form>
+      <p class="sub small" style="margin-top:10px"><b>Verificado</b>: lo respalda una cartola, estado de cuenta o comprobante. <b>Declarado</b>: lo dices tú, sin respaldo todavía. <b>Proyectado</b>: aún no ocurre (fecha futura).</p>
+    </div>
 
-<details class="card"><summary>Respaldo (exportar / importar JSON)</summary>
-<p class="sub">Tus datos viven solo en este navegador. Exporta para guardarlos o moverlos a otro dispositivo.</p>
-<textarea id="js" rows="5" style="width:100%"></textarea>
-<div class="row"><button id="ex">Exportar</button><button id="im">Importar</button></div></details>
-</div>
+    <div id="c-datos" class="panel" hidden>
+      <div class="kpis" id="kpis"></div>
+      <div class="card"><h3>Destino de cada peso que ingresa</h3><div id="destino"></div></div>
+      <div class="grid2">
+        <div class="card"><h3>Evolución mensual</h3><div id="g-meses"></div>
+          <details style="margin-top:10px"><summary>Ver como tabla</summary><div class="tw"><table id="t-meses"></table></div></details></div>
+        <div class="card"><h3>Dónde se va el dinero</h3><div id="g-top"></div></div>
+      </div>
+    </div>
+
+    <div class="card" id="c-lista" hidden>
+      <div class="panel-head" style="margin-bottom:12px"><h3 style="margin:0">Movimientos <span class="sub" id="l-n"></span></h3>
+        <div class="actions"><label class="field"><span>Tipo</span><select id="l-tipo"><option value="">Todos</option><option>Ingreso</option><option>Inversión</option><option>Costo</option><option>Gasto</option></select></label>
+          <label class="field"><span>Buscar</span><input id="l-q" type="search" placeholder="Descripción"></label></div></div>
+      <div class="tw stack"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th class="n">Monto</th><th>Evidencia</th><th></th></tr></thead><tbody id="l-tabla"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <details id="imp"><summary>Importar desde CSV o Excel</summary>
+        <p class="sub small">Columnas: <b>fecha, tipo, descripcion, monto</b> y, si quieres, <b>evidencia</b> (verificado o declarado). Sirve un archivo CSV o filas copiadas desde Excel. Antes de agregar nada verás una vista previa.</p>
+        <div class="form"><label class="field"><span>Archivo</span><input id="imp-file" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"></label>
+          <label class="field wide"><span>O pega las filas aquí</span><textarea id="imp-txt" placeholder="2026-11-01&#9;Gasto&#9;Almuerzo&#9;8.900"></textarea></label></div>
+        <div class="actions" style="margin-top:10px"><button class="btn" id="imp-leer" type="button">Revisar</button></div>
+        <div id="imp-prev" style="margin-top:12px"></div>
+      </details>
+      <details style="margin-top:12px"><summary>Respaldo y datos</summary>
+        <p class="sub small">Tus datos viven solo en este navegador. Exporta para guardarlos o llevarlos a otro dispositivo.</p>
+        <div class="actions"><button class="btn" id="exp-csv" type="button">Exportar movimientos (CSV)</button><button class="btn" id="bk-json" type="button">Respaldo completo (JSON)</button>
+          <label class="btn" for="bk-file" style="display:inline-block">Restaurar respaldo</label><input id="bk-file" type="file" accept="application/json,.json" hidden>
+          <button class="btn danger" id="bk-borrar" type="button">Borrar todos mis datos</button></div>
+        <p class="msg" id="bk-msg" role="status"></p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ===================== 2 · FINANCIAMIENTO ===================== -->
+  <section id="p-financiamiento" class="panel" role="tabpanel" aria-labelledby="tab-financiamiento" hidden>
+    <div class="panel-head"><div><h2>Financiamiento y deuda</h2>
+      <p class="sub">Compara cuánto cuesta cada fuente de dinero con la misma vara: la tasa efectiva anual que implican las cuotas. Las tasas no se escriben por ti: salen de la oferta o del contrato que tú ingresas.</p></div></div>
+
+    <div class="card" id="fin-carga"></div>
+
+    <div class="card">
+      <div class="panel-head" style="margin-bottom:12px"><h3 style="margin:0">Comparador de ofertas</h3>
+        <label class="field"><span>Ordenar por</span><select id="f-orden"><option value="anual">Tasa efectiva anual (menor primero)</option><option value="inst">Institución</option><option value="extra">Costo adicional %</option><option value="pago">Pago (menor primero)</option></select></label></div>
+      <div class="tw cmp stack"><table><thead><tr><th>Institución y producto</th><th class="n">Capital</th><th>Condiciones</th><th class="n">Total a devolver</th><th class="n">Mensual implícita</th><th class="n">Anual efectiva implícita</th><th>Informado</th><th class="n">Pago / ingreso</th><th></th></tr></thead><tbody id="f-tabla"></tbody></table></div>
+      <p class="sub small" style="margin-top:10px">La <b>tasa implícita</b> es la que iguala lo que recibes con el valor presente de lo que pagas: incluye todo lo que esté dentro de la cuota (intereses, seguros, comisiones). La <b>CAE</b> oficial incluye intereses, gastos y seguros expresados en forma anual y debe figurar en el contrato. Si ambas difieren mucho, pide el detalle antes de aceptar. * En pagos únicos de pocos días, la tasa anual es una extrapolación para poder comparar; no es la CAE.</p>
+    </div>
+
+    <div class="card">
+      <h3>Agregar una oferta o un crédito</h3>
+      <form id="f-of" class="form" novalidate>
+        <label class="field"><span>Institución</span><input id="o-inst" list="dl-inst" type="text" maxlength="60" autocomplete="off" required><datalist id="dl-inst"></datalist></label>
+        <label class="field"><span>Producto</span><input id="o-prod" type="text" maxlength="60" placeholder="Crédito de consumo, avance…" required></label>
+        <label class="field"><span>Estado</span><select id="o-estado"><option>Cotización</option><option>Contratado</option></select></label>
+        <label class="field"><span>Fecha</span><input id="o-fecha" type="date"></label>
+        <label class="field"><span>Capital recibido (CLP)</span><input id="o-capital" type="text" inputmode="numeric" autocomplete="off" required></label>
+        <label class="field"><span>Forma de pago</span><select id="o-tipo"><option value="cuotas">Cuotas mensuales iguales</option><option value="pago-unico">Un solo pago</option></select></label>
+        <label class="field"><span>Plazo</span><input id="o-plazo" type="text" inputmode="numeric" autocomplete="off" required></label>
+        <label class="field"><span>Unidad</span><select id="o-unidad"><option value="meses">meses</option><option value="dias">días</option></select></label>
+        <label class="field"><span id="o-pago-l">Cuota mensual total (CLP)</span><input id="o-pago" type="text" inputmode="numeric" autocomplete="off" required></label>
+        <label class="field"><span>Tasa informada % (opcional)</span><input id="o-tasa" type="text" inputmode="decimal" autocomplete="off"></label>
+        <label class="field"><span>Esa tasa es</span><select id="o-tasaper"><option value="">No lo sé</option><option value="mensual">Mensual</option><option value="anual">Anual</option></select></label>
+        <label class="field"><span>CAE informada % (opcional)</span><input id="o-cae" type="text" inputmode="decimal" autocomplete="off"></label>
+        <label class="field wide"><span>Nota (opcional)</span><input id="o-nota" type="text" maxlength="200" placeholder="Ej.: incluye seguro de desgravamen"></label>
+        <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Agregar al comparador</button><span class="msg" id="o-msg" role="status" aria-live="polite"></span></div>
+      </form>
+      <p class="sub small" style="margin-top:10px">Usa la cuota <b>total</b> que pagarías cada mes (con seguros y comisiones) y el capital que realmente recibes. Así la tasa implícita refleja el costo real.</p>
+    </div>
+
+    <div class="card">
+      <h3>Tarjetas y líneas con cupo</h3>
+      <div id="cupos-lista" class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"></div>
+      <details style="margin-top:14px"><summary>Agregar una tarjeta o línea</summary>
+        <form id="f-cupo" class="form" novalidate>
+          <label class="field"><span>Institución</span><input id="q-inst" list="dl-inst" type="text" maxlength="60" required></label>
+          <label class="field"><span>Producto</span><input id="q-prod" type="text" maxlength="60" placeholder="Tarjeta de crédito" required></label>
+          <label class="field"><span>Cupo total (CLP)</span><input id="q-cupo" type="text" inputmode="numeric" required></label>
+          <label class="field"><span>Utilizado (CLP)</span><input id="q-usado" type="text" inputmode="numeric" required></label>
+          <label class="field"><span>Próxima facturación</span><input id="q-fact" type="date"></label>
+          <label class="field"><span>Vencimiento</span><input id="q-venc" type="date"></label>
+          <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Agregar</button><span class="msg" id="q-msg" role="status" aria-live="polite"></span></div>
+        </form>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Antes de aceptar un crédito</h3>
+      <ul class="sub" style="margin:0 0 12px;padding-left:20px;display:grid;gap:6px">
+        <li>Pide el <b>costo total del crédito (CTC)</b> —lo que terminarás pagando— y la <b>CAE</b>; deben informarse en la publicidad y en el contrato.</li>
+        <li>Compara con la misma vara: capital recibido, plazo, y cuota total con seguros e impuestos.</li>
+        <li>No confundas «sobrecosto sobre el capital» con tasa mensual ni con CAE.</li>
+        <li>Un cupo disponible no es ingreso, y el pago de una tarjeta no es un gasto nuevo si el consumo ya está registrado.</li>
+      </ul>
+      <div class="form" style="align-items:end"><label class="field"><span>Tasa máxima convencional vigente (% anual, opcional)</span><input id="f-tmc" type="text" inputmode="decimal" autocomplete="off" placeholder="Cópiala desde la CMF"></label>
+        <p class="sub small" style="grid-column:span 2">Es la tasa más alta que permite la ley y la publica la CMF cada mes; depende del tipo y monto de la operación. Si la ingresas, la tabla avisa cuando la tasa implícita la supera (la implícita incluye todos los cargos, así que es una señal para revisar, no una conclusión legal).
+          Fuentes: <a href="https://www.cmfchile.cl" target="_blank" rel="noopener noreferrer">CMF</a> · <a href="https://www.sernac.cl" target="_blank" rel="noopener noreferrer">SERNAC</a> (comparador de créditos de consumo).</p></div>
+    </div>
+  </section>
+
+  <!-- ===================== 3 · BRECHA DE EVIDENCIA ===================== -->
+  <section id="p-brecha" class="panel" role="tabpanel" aria-labelledby="tab-brecha" hidden>
+    <div class="panel-head"><div><h2>Brecha de evidencia</h2>
+      <p class="sub">La mayoría de las apps te muestran un saldo como si fuera un hecho. Aquí cada cifra declara de dónde viene. Ves cuánta de tu caja está respaldada por documentos, cuánta depende de tu palabra y cuánta del futuro, y qué falta verificar para cerrar la brecha.</p></div></div>
+
+    <div class="card">
+      <h3>Saldo inicial</h3>
+      <p class="sub small" style="margin-bottom:10px">Lo que había en tu cuenta antes del primer movimiento registrado. Si no lo ingresas, las cifras de caja serán el flujo acumulado de tus movimientos, no un saldo bancario.</p>
+      <form id="f-saldo" class="form" novalidate>
+        <label class="field"><span>Monto (CLP)</span><input id="s-monto" type="text" inputmode="numeric" autocomplete="off"></label>
+        <label class="field"><span>Fecha del saldo</span><input id="s-fecha" type="date"></label>
+        <label class="field"><span>Evidencia</span><select id="s-ev"><option value="D">Declarado</option><option value="V">Verificado</option></select></label>
+        <label class="field" id="s-doc-w" hidden><span>Documento</span><input id="s-doc" type="text" maxlength="120" placeholder="Cartola de la cuenta, fecha"></label>
+        <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Guardar saldo</button><button class="btn" id="s-quitar" type="button" hidden>Quitar saldo</button><span class="msg" id="s-msg" role="status" aria-live="polite"></span></div>
+      </form>
+    </div>
+
+    <div id="b-vacio" class="card empty" hidden><h3>Todavía no hay nada que medir</h3><p class="sub">Registra movimientos en la pestaña Control. Después de la primera semana verás aquí cuánta de tu caja tiene respaldo.</p></div>
+
+    <div id="b-datos" class="panel" hidden>
+      <div class="kpis" id="b-kpis"></div>
+      <div class="card"><h3>Tu caja en tres versiones</h3><div id="b-grafico"></div></div>
+      <div class="grid2">
+        <div class="card"><h3>Qué parte de cada tipo tiene respaldo</h3><div id="b-tipos"></div>
+          <div class="leg"><span><span class="dot" style="background:var(--ev-v)"></span>Verificado</span><span><span class="dot" style="background:var(--ev-d)"></span>Declarado</span><span><span class="dot" style="background:var(--ev-p)"></span>Proyectado</span></div></div>
+        <div class="card"><h3>Para cerrar la brecha</h3><p class="sub small" style="margin-bottom:8px">Los movimientos ya ocurridos sin respaldo, de mayor a menor. Verifica cada uno con tu cartola o comprobante.</p><div id="b-cerrar"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="sub">Tus datos se guardan solo en este navegador; nada se envía a ningún servidor. Las cifras de las ofertas observadas provienen de capturas que tú tomaste el 08-11-2026 y no implican contratación.</footer>
 </main>
-<p class="sub" style="text-align:center;margin:8px 0 24px"><a href="comercial/" style="color:var(--acc)">Servicios (borrador)</a></p>
 
-<script>
-var TIPOS=['Ingreso','Inversión','Costo','Gasto'];
-var COL={'Ingreso':'#2e9e6b','Inversión':'#3b7ddd','Costo':'#e0a030','Gasto':'#d65a5a'};
-var PH={'Ingreso':'Concepto de sueldo','Inversión':'Concepto de aporte a ahorro','Costo':'Concepto de mantención','Gasto':'Concepto de urgencia'};
-var INIT=[
-{f:'2026-11-01',t:'Gasto',d:'Gastos fijos del mes',m:400000},
-{f:'2026-11-05',t:'Costo',d:'Cuota tarjeta (consumo)',m:125100},
-{f:'2026-11-05',t:'Costo',d:'Mantención + impuesto tarjeta',m:6111},
-{f:'2026-11-15',t:'Ingreso',d:'Sueldo',m:1120000},
-{f:'2026-11-15',t:'Ingreso',d:'Rendimiento ahorro 24/7',m:4522},
-{f:'2026-11-20',t:'Gasto',d:'Emergencia',m:120000}
-];
-var CLOUD=!!(window.CFG&&CFG.url&&CFG.anonKey&&window.supabase),sb,UID=null,snap={},psnap="",qt,busy=false;
-var KEY='orden_financiero_v2',S,cs={},tm;
-var fm=new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
-function $(i){return document.getElementById(i)}
-function uid(){return Math.random().toString(36).slice(2,9)}
-function pc(x){return (x*100).toFixed(1).replace('.',',')+'%'}
-function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
-function def(){return {auto:1,p:{saldo:1179594,tasa:4.6,meses:3},rows:INIT.map(function(r){return {id:uid(),f:r.f,t:r.t,d:r.d,m:r.m}})}}
-function load(){try{var s=localStorage.getItem(KEY);if(s){S=JSON.parse(s);if(S&&S.rows&&S.p)return}}catch(e){}S=def()}
-function save(){if(CLOUD){queue();return}try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-
-/* Libro mayor: filas válidas del rango + remanente automático por mes */
-function L(){
- var a=$('d1').value,b=$('d2').value;
- var l=S.rows.filter(function(r){return r.f&&isFinite(r.m)&&r.m>=0&&(!a||r.f>=a)&&(!b||r.f<=b)}).map(function(r){return {f:r.f,t:r.t,d:(r.d||'').trim()||'(sin descripción)',m:+r.m}});
- if(S.auto){
-  var mo={};
-  l.forEach(function(r){var k=r.f.slice(0,7);mo[k]=(mo[k]||0)+(r.t==='Ingreso'?r.m:-r.m)});
-  Object.keys(mo).sort().forEach(function(k){
-   var v=Math.round(mo[k]*100)/100;if(Math.abs(v)<0.5)return;
-   var dd=new Date(+k.slice(0,4),+k.slice(5),0).getDate();
-   l.push({f:k+'-'+('0'+dd).slice(-2),t:'Inversión',d:v>0?'Remanente a ahorro (automático)':'Retiro de ahorro (déficit)',m:v,auto:1});
-  });
- }
- return l;
-}
-function tot(l){var o={'Ingreso':0,'Inversión':0,'Costo':0,'Gasto':0};l.forEach(function(r){o[r.t]+=r.m});return o}
-
-function kpis(){
- var l=L(),T=tot(l),i=T['Ingreso'],v=T['Inversión'],c=T['Costo'],g=T['Gasto'];
- var res=i-c-g,cu=i-v-c-g,ok=Math.abs(cu)<0.5;
- var ms={};l.forEach(function(r){if(!r.auto)ms[r.f.slice(0,7)]=1});
- var n=Math.max(1,Object.keys(ms).length),ob=(c+g)/n,p=S.p;
- var rend=0;l.forEach(function(r){if(r.t==='Ingreso'&&/rendimiento/i.test(r.d))rend+=r.m});rend/=n;
- var teo=(+p.saldo||0)*(+p.tasa||0)/100/12,fo=(+p.meses||0)*ob,cob=ob?(+p.saldo||0)/ob:0;
- var K=[['Ingresos',fm.format(i),COL['Ingreso']],['Inversión',fm.format(v),COL['Inversión']],['Costos',fm.format(c),COL['Costo']],['Gastos',fm.format(g),COL['Gasto']],
- ['Resultado del ejercicio',fm.format(res),css('--tx')],
- ['Cuadre (debe ser 0)',fm.format(cu),ok?COL['Ingreso']:COL['Gasto'],ok?'Cuadra':'No cuadra: asigna la diferencia a inversión'],
- ['Tasa de ahorro',i?pc(v/i):'—',COL['Inversión'],'Inversión / ingresos'],
- ['Carga (costos + gastos)',i?pc((c+g)/i):'—',COL['Costo'],'sobre ingresos'],
- ['Cobertura del ahorro',cob.toFixed(1).replace('.',',')+' meses',cob>=p.meses?COL['Ingreso']:COL['Gasto'],'Objetivo '+fm.format(fo)+' ('+p.meses+' meses)'],
- ['Rendimiento mensual',fm.format(rend),COL['Ingreso'],'Teórico '+fm.format(teo)+' ('+String(p.tasa).replace('.',',')+'% anual)']];
- $('kpis').innerHTML=K.map(function(k){return '<div class="kpi" style="border-left-color:'+k[2]+'"><small>'+k[0]+'</small><b>'+k[1]+'</b>'+(k[3]?'<small>'+k[3]+'</small>':'')+'</div>'}).join('');
- var w=[],bad=S.rows.filter(function(r){return !r.f||!isFinite(r.m)||r.m<0||!(r.d||'').trim()}).length;
- if(bad)w.push(bad+' fila(s) incompleta(s) o con monto negativo quedan fuera del cálculo.');
- var df=l.filter(function(r){return r.auto&&r.m<0});
- if(df.length)w.push('Déficit de caja en '+df.map(function(r){return r.f.slice(0,7)}).join(', ')+': los costos y gastos superan los ingresos.');
- $('st').innerHTML=w.length?'<span class="bad">'+w.join(' ')+'</span>':'<span class="ok">Sin alertas.</span>';
- var au=l.filter(function(r){return r.auto});
- $('auto').textContent=au.length?'Asignación automática: '+au.map(function(r){return r.f.slice(0,7)+' → '+fm.format(r.m)}).join(' · '):'';
-}
-
-function charts(){
- if(typeof Chart==='undefined'){document.querySelectorAll('.ch').forEach(function(e){e.innerHTML='<p class="sub">No se pudo cargar la librería de gráficos.</p>'});return}
- var tx=css('--tx'),mut=css('--mut'),bd=css('--bd'),card=css('--card'),l=L();
- var mes=$('gr').value==='m',agg={};
- l.forEach(function(r){var k=mes?r.f.slice(0,7):r.f;agg[k]=agg[k]||{'Ingreso':0,'Inversión':0,'Costo':0,'Gasto':0};agg[k][r.t]+=r.m});
- var ks=Object.keys(agg).sort(),cum=$('ac').checked;
- function ser(fn){var run=0;return ks.map(function(k){var x=fn(agg[k]);if(cum){run+=x;return run}return x})}
- var nm={'Ingreso':'Ingresos','Inversión':'Inversión','Costo':'Costos','Gasto':'Gastos'};
- var ds=TIPOS.map(function(t){return {type:'bar',label:nm[t],data:ser(function(a){return a[t]}),backgroundColor:COL[t]}});
- ds.push({type:'line',label:'Resultado del ejercicio',data:ser(function(a){return a['Ingreso']-a['Costo']-a['Gasto']}),borderColor:tx,backgroundColor:tx,tension:.25,pointRadius:4});
- var ax=function(){return {ticks:{color:mut,callback:function(v){return fm.format(v)}},grid:{color:bd}}};
- if(cs.a)cs.a.destroy();
- cs.a=new Chart($('c1'),{data:{labels:ks,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tx}},tooltip:{callbacks:{label:function(x){return x.dataset.label+': '+fm.format(x.parsed.y)}}}},scales:{x:{ticks:{color:mut},grid:{color:bd}},y:ax()}}});
- var f=$('tf').value,m={};
- l.forEach(function(r){if(f&&r.t!==f)return;var k=r.d+'||'+r.t;m[k]=(m[k]||0)+r.m});
- var top=Object.keys(m).map(function(k){return {n:k.split('||')[0],t:k.split('||')[1],v:m[k]}}).sort(function(a,b){return b.v-a.v}).slice(0,10);
- if(cs.b)cs.b.destroy();
- cs.b=new Chart($('c2'),{type:'bar',data:{labels:top.map(function(x){return x.n}),datasets:[{data:top.map(function(x){return x.v}),backgroundColor:top.map(function(x){return COL[x.t]})}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(x){return top[x.dataIndex].t+': '+fm.format(x.parsed.x)}}}},scales:{x:ax(),y:{ticks:{color:tx},grid:{display:false}}}}});
- var T=tot(l),I=T['Ingreso'];
- if(cs.c)cs.c.destroy();
- cs.c=new Chart($('c3'),{type:'doughnut',data:{labels:['Costos','Gastos','Inversión'],datasets:[{data:[T['Costo'],T['Gasto'],Math.max(T['Inversión'],0)],backgroundColor:[COL['Costo'],COL['Gasto'],COL['Inversión']],borderColor:card}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:tx}},tooltip:{callbacks:{label:function(x){return x.label+': '+fm.format(x.parsed)+(I?' ('+pc(x.parsed/I)+' de ingresos)':'')}}}}}});
-}
-
-function dls(){
- $('dls').innerHTML='';
- TIPOS.forEach(function(t){
-  var d=document.createElement('datalist');d.id='dl_'+t;
-  Array.from(new Set(S.rows.filter(function(r){return r.t===t&&r.d}).map(function(r){return r.d}))).forEach(function(x){var o=document.createElement('option');o.value=x;d.appendChild(o)});
-  $('dls').appendChild(d);
- });
-}
-function update(now){
- save();kpis();dls();
- clearTimeout(tm);if(now)charts();else tm=setTimeout(charts,150);
-}
-
-function table(){
- var tb=$('tb');tb.innerHTML='';
- S.rows.sort(function(a,b){return (a.f||'9').localeCompare(b.f||'9')});
- S.rows.forEach(function(r){
-  var tr=document.createElement('tr');
-  function chk(){tr.className=(!r.f||!isFinite(r.m)||r.m<0||!(r.d||'').trim())?'inv':''}
-  function cell(el,cls){var td=document.createElement('td');if(cls)td.className=cls;td.appendChild(el);tr.appendChild(td)}
-  var f=document.createElement('input');f.type='date';f.value=r.f;f.onchange=function(){r.f=f.value;table();update(1)};
-  var s=document.createElement('select');TIPOS.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===r.t)o.selected=true;s.appendChild(o)});
-  var d=document.createElement('input');d.value=r.d;d.setAttribute('list','dl_'+r.t);
-  s.onchange=function(){r.t=s.value;d.setAttribute('list','dl_'+r.t);update(1)};
-  d.oninput=function(){r.d=d.value;chk();update()};
-  var m=document.createElement('input');m.type='number';m.min=0;m.value=r.m;m.oninput=function(){r.m=m.value===''?NaN:+m.value;chk();update()};
-  var x=document.createElement('button');x.textContent='Eliminar';x.onclick=function(){S.rows=S.rows.filter(function(q){return q!==r});table();update(1)};
-  cell(f);cell(s);cell(d);cell(m,'n');cell(x);chk();tb.appendChild(tr);
- });
-}
-
-$('nt').onchange=function(){$('nd').placeholder=PH[$('nt').value];$('nd').setAttribute('list','dl_'+$('nt').value)};
-$('add').onclick=function(){
- var d=$('nd').value.trim(),m=+$('nm').value;
- if(!d||!(m>0)){alert('Escribe una descripción y un monto mayor que cero.');return}
- S.rows.push({id:uid(),f:$('nf').value||new Date().toISOString().slice(0,10),t:$('nt').value,d:d,m:m});
- $('nd').value='';$('nm').value='';table();update(1);
-};
-$('reset').onclick=function(){if(confirm('¿Restaurar los datos iniciales? Se perderán tus cambios.')){S=def();sync();table();update(1)}};
-function sync(){$('au').value=S.auto?'1':'0';$('ps').value=S.p.saldo;$('pt').value=S.p.tasa;$('pm').value=S.p.meses}
-$('au').onchange=function(){S.auto=+$('au').value;update(1)};
-$('ps').oninput=function(){S.p.saldo=+$('ps').value;update()};
-$('pt').oninput=function(){S.p.tasa=+$('pt').value;update()};
-$('pm').oninput=function(){S.p.meses=+$('pm').value;update()};
-['d1','d2','gr','ac','tf'].forEach(function(i){$(i).onchange=function(){i==='gr'||i==='ac'||i==='tf'?charts():update(1)}});
-$('ex').onclick=function(){var t=JSON.stringify(S);$('js').value=t;try{navigator.clipboard.writeText(t)}catch(e){}};
-$('im').onclick=function(){
- try{
-  var o=JSON.parse($('js').value);
-  if(!o||!Array.isArray(o.rows))throw 0;
-  o.rows=o.rows.filter(function(r){return r&&TIPOS.indexOf(r.t)>-1}).map(function(r){return {id:uid(),f:String(r.f||''),t:r.t,d:String(r.d||''),m:+r.m}});
-  o.p=o.p||S.p;o.auto=o.auto?1:0;S=o;sync();table();update(1);
- }catch(e){alert('El JSON no es válido.')}
-};
-$('nf').value=new Date().toISOString().slice(0,10);
-
-/* ---------- Supabase ---------- */
-function cs_(t,bad){var e=$('cs');e.textContent=t;e.className=bad?'bad':'sub'}
-function ready(){$('app').hidden=false;sync();table();update(1)}
-function pay(r){return {fecha:r.f,tipo:r.t,descripcion:(r.d||'').trim(),monto:Math.round(r.m*100)/100}}
-function queue(){cs_('Guardando…');clearTimeout(qt);qt=setTimeout(flush,700)}
-async function cloudLoad(){
- var a=await sb.from('movimientos').select('id,fecha,tipo,descripcion,monto').order('fecha');
- var b=await sb.from('parametros').select('*').maybeSingle();
- var e=a.error||b.error;
- if(e){cs_('Error al cargar: '+e.message,1);S={auto:1,p:def().p,rows:[]};return}
- var p=b.data;
- S={auto:p?(p.inversion_auto?1:0):1,p:p?{saldo:+p.saldo_ahorro,tasa:+p.tasa_anual,meses:p.meses_fondo}:def().p,
-  rows:a.data.map(function(r){return {id:r.id,f:r.fecha,t:r.tipo,d:r.descripcion,m:+r.monto}})};
- snap={};S.rows.forEach(function(r){snap[r.id]=JSON.stringify(pay(r))});
- psnap=p?JSON.stringify({a:S.auto,p:S.p}):'';
- cs_(S.rows.length?'Conectado a Supabase.':'Sin datos: agrega movimientos o pulsa Restaurar datos iniciales.');
-}
-async function flush(){
- if(busy){queue();return}busy=true;var err=null;
- try{
-  var ids={},x;S.rows.forEach(function(r){ids[r.id]=1});
-  for(var id in snap){if(!ids[id]){x=await sb.from('movimientos').delete().eq('id',id);if(x.error)throw x.error;delete snap[id]}}
-  for(var r of S.rows){
-   if(!(r.f&&isFinite(r.m)&&r.m>=0&&(r.d||'').trim()))continue;
-   var j=JSON.stringify(pay(r));
-   if(r.id.length<36){x=await sb.from('movimientos').insert(pay(r)).select('id').single();if(x.error)throw x.error;r.id=x.data.id;snap[r.id]=j}
-   else if(snap[r.id]!==j){x=await sb.from('movimientos').update(pay(r)).eq('id',r.id);if(x.error)throw x.error;snap[r.id]=j}
-  }
-  var pj=JSON.stringify({a:S.auto,p:S.p});
-  if(pj!==psnap){x=await sb.from('parametros').upsert({user_id:UID,saldo_ahorro:+S.p.saldo||0,tasa_anual:+S.p.tasa||0,meses_fondo:Math.round(+S.p.meses)||0,inversion_auto:!!S.auto});if(x.error)throw x.error;psnap=pj}
- }catch(e){err=e}
- busy=false;cs_(err?'Error al guardar: '+err.message:'Guardado ✓',!!err);
-}
-if(!CLOUD){load();ready();cs_('Modo local: los datos viven solo en este navegador. Completa config.js para usar Supabase.')}
-else{
- sb=supabase.createClient(CFG.url,CFG.anonKey);
- $('lg').hidden=false;
- $('in').onclick=async function(){var r=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});$('lm').textContent=r.error?r.error.message:''};
- $('up').onclick=async function(){var r=await sb.auth.signUp({email:$('em').value.trim(),password:$('pw').value});$('lm').textContent=r.error?r.error.message:(r.data.session?'':'Cuenta creada. Si tu proyecto lo exige, confirma el correo y vuelve a entrar.')};
- $('so').onclick=function(){sb.auth.signOut()};
- sb.auth.onAuthStateChange(function(ev,ses){setTimeout(async function(){
-  if(ses&&ses.user){
-   if(UID===ses.user.id)return;
-   UID=ses.user.id;$('lg').hidden=true;$('bar').hidden=false;$('who').textContent=ses.user.email;
-   await cloudLoad();ready();
-  }else{UID=null;S=null;$('app').hidden=true;$('bar').hidden=true;$('lg').hidden=false;cs_('')}
- },0)});
-}
-
-// Catálogo extensible de productos; distinto de simulaciones y del libro mayor.
-var PRODUCTOS_CREDITO=[
- {id:'tenpo-tc-20261108',institucion:'Tenpo',producto:'Tarjeta de crédito',fecha:'2026-11-08',cupo:900000,utilizado:20615,disponible:879385,facturacion:'20/11/2026',vencimiento:'05/12/2026',interes:null,cae:null,mantencion:null,evidencia:'registros/2026-11-08-tenpo-tarjeta-credito.md'}
-];
-function renderProductosCredito(){
- var sel=document.getElementById('producto-selector'),out=document.getElementById('producto-detalle');
- if(!sel||!out)return;
- sel.innerHTML='';PRODUCTOS_CREDITO.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.institucion+' — '+p.producto;sel.appendChild(o)});
- function draw(){
- var p=PRODUCTOS_CREDITO.find(function(x){return x.id===sel.value});if(!p)return;
- var u=p.cupo>0?p.utilizado/p.cupo*100:0;
- var ok=Math.abs(p.cupo-p.utilizado-p.disponible)<1;
- var fmt=function(v){return v===null||v===undefined?'Por confirmar':String(v)};
- out.innerHTML='<p class="sub">Observado: '+p.fecha+' · Estado: ficha informativa</p>'+
- '<div class="kpis"><div class="kpi"><small>Cupo total</small><b>'+fm.format(p.cupo)+'</b></div>'+
- '<div class="kpi"><small>Utilizado</small><b>'+fm.format(p.utilizado)+'</b></div>'+
- '<div class="kpi"><small>Disponible</small><b>'+fm.format(p.disponible)+'</b></div>'+
- '<div class="kpi"><small>Utilización</small><b>'+u.toFixed(2).replace('.',',')+'%</b></div></div>'+
- '<p>Facturación: <strong>'+p.facturacion+'</strong> · Vencimiento: <strong>'+p.vencimiento+'</strong></p>'+
- '<p>Interés: <strong>'+fmt(p.interes)+'</strong> · CAE: <strong>'+fmt(p.cae)+'</strong> · Mantención: <strong>'+fmt(p.mantencion)+'</strong></p>'+
- '<p class="'+(ok?'ok':'bad')+'">Control de cupo: '+(ok?'cuadra':'REVISAR: no cuadra')+'</p>'+
- '<p class="sub">El cupo no es ingreso. No duplicar el saldo utilizado como gasto si el consumo ya está registrado. No se ha confirmado un avance contratado.</p>'+
- '<p class="sub"><a href="'+p.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha documental</a></p>';
- }
- sel.onchange=draw;draw();
-}
-renderProductosCredito();
-// Catálogo extensible de simulaciones; independiente de movimientos efectivos.
-var SIMULACIONES_CREDITO=[
- {id:'tenpo-20261108',institucion:'Tenpo',producto:'Avance en cuotas',fecha:'2026-11-08',capital:200000,unidad:'meses',tipo:'cuotas',primeraCuota:'05/12/2026',opciones:[{plazo:2,pago:105022},{plazo:10,pago:23843},{plazo:17,pago:15597},{plazo:24,pago:12233}],nota:'Las cuatro alternativas implican aproximadamente 3,33% mensual bajo las hipótesis indicadas. Los costos totales aumentan con el plazo. No se dispone de CAE contractual.',evidencia:'registros/2026-11-08-tenpo-avance-y-facturacion.md'},
- {id:'mercadopago-20261108',institucion:'Mercado Pago / Mercado Libre',producto:'Dinero Plus',fecha:'2026-11-08',capital:31000,unidad:'días',tipo:'pago-unico',opciones:[{plazo:7,pago:31342},{plazo:14,pago:31624},{plazo:21,pago:31906},{plazo:28,pago:32188}],nota:'Oferta observada: cupo de crédito para compras $136.000 y mención de $31.000 adicionales en Dinero Plus. El posible primer pago 06/12 corresponde a compras sujetas a condiciones, no necesariamente a Dinero Plus. No consta CAE ni contratación.',evidencia:'registros/2026-11-08-mercadopago-dinero-plus.md'},
- {id:'mach-20261108',institucion:'MACH / Bci',producto:'Crédito de consumo',fecha:'2026-11-08',capital:4037370,unidad:'meses',tipo:'cuotas',primeraCuota:'10/12/2026',opciones:[{plazo:60,pago:130674}],tasaInformada:'2,45% (periodicidad no especificada en captura)',caeInformada:'30,02% anual',nota:'Simulación de 60 cuotas. La captura indica “Sin costos asociados” al seleccionar el primer pago; no implica ausencia de intereses ni de otros cargos. Verificar contrato, CAE, impuestos y monto total antes de contratar.',evidencia:'registros/2026-11-08-mach-credito-consumo.md'}
-];
-function renderSimulaciones(){
- var sel=document.getElementById('sim-selector'),out=document.getElementById('sim-detalle');if(!sel||!out)return;
- sel.innerHTML=SIMULACIONES_CREDITO.map(function(s){return '<option value="'+s.id+'">'+s.institucion+' — '+s.producto+' ('+fm.format(s.capital)+')</option>'}).join('');
- function tasa(n,p,capital){if(!(n>0&&p>0&&capital>0))return null;if(Math.abs(n*p-capital)<0.001)return 0;if(n*p<capital)return null;var lo=0,hi=1;for(var k=0;k<80;k++){var m=(lo+hi)/2;var pv=p*(1-Math.pow(1+m,-n))/m;if(pv>capital)lo=m;else hi=m;}return (lo+hi)/2}
- function draw(){var s=SIMULACIONES_CREDITO.find(function(x){return x.id===sel.value});if(!s)return;
- var head=s.tipo==='cuotas'?'Cuota mensual':'Pago único';
- var rows=s.opciones.map(function(o){var total=s.tipo==='cuotas'?o.plazo*o.pago:o.pago,extra=total-s.capital;
- var t=s.tipo==='cuotas'?tasa(o.plazo,o.pago,s.capital):null;var rate=t===null?'No calculada':(t*100).toFixed(2).replace('.',',')+'% mensual implícita';var sobrecosto=s.capital>0?(extra/s.capital*100).toFixed(2).replace('.',',')+'%':'—';
- return '<tr><td>'+o.plazo+' '+s.unidad+'</td><td>'+fm.format(o.pago)+'</td><td>'+fm.format(total)+'</td><td>'+fm.format(extra)+' ('+sobrecosto+')</td><td>'+rate+'</td></tr>'}).join('');
- out.innerHTML='<h2>'+s.institucion+' — '+s.producto+'</h2><p class="sub">Capital simulado: '+fm.format(s.capital)+' · Fecha de captura: '+s.fecha+' · Estado: simulación, no contratado'+(s.tasaInformada?' · Tasa informada: '+s.tasaInformada:'')+(s.caeInformada?' · CAE informada: '+s.caeInformada:'')+(s.primeraCuota?' · Primera cuota indicada: '+s.primeraCuota:'')+'</p><div class="sc"><table><thead><tr><th>Plazo</th><th>'+head+'</th><th>Total a devolver</th><th>Costo adicional</th><th>Tasa mensual implícita*</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="sub">*Solo para préstamos en cuotas mensuales: estimación financiera suponiendo desembolso completo, cuotas iguales al final de cada mes y sin cargos fuera de la cuota. Para pago único en días, no se estima tasa mensual ni CAE.</p><p class="sub">'+s.nota+'</p><p class="sub"><a href="'+s.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha de evidencia</a>. Capturas originales entregadas en la conversación, no almacenadas en este repositorio.</p>';
- }
- sel.onchange=draw;draw();
-}
-renderSimulaciones();
-
-</script>
+<script src="finanzas.js"></script>
+<script src="datos.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

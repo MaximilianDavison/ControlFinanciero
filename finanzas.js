@@ -1,0 +1,304 @@
+/* Orden financiero · motor de cálculo.
+ * Funciones puras, sin acceso al DOM, para poder auditarlas con pruebas (tests/finanzas.test.js).
+ * Toda cifra que muestra la página sale de aquí o de datos que el usuario escribió. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Fin = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var TIPOS = ['Ingreso', 'Inversión', 'Costo', 'Gasto'];
+
+  /* ---------- formato ---------- */
+  function pct(x, dec) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return (x * 100).toFixed(dec === undefined ? 1 : dec).replace('.', ',') + '%';
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* ---------- parseo de lo que escribe el usuario ---------- */
+  /* Acepta "1.234.567", "1,234,567", "$ 1234", "1234,5". Devuelve un entero (CLP) o NaN. */
+  function parseMonto(s) {
+    if (typeof s === 'number') return isFinite(s) ? Math.round(s) : NaN;
+    var x = String(s == null ? '' : s).trim().replace(/clp/ig, '').replace(/[\s$]/g, '');
+    if (!x || !/^[-+]?[\d.,]+$/.test(x)) return NaN;
+    var neg = x.charAt(0) === '-';
+    x = x.replace(/^[-+]/, '');
+    var dots = (x.match(/\./g) || []).length, commas = (x.match(/,/g) || []).length, v;
+    if (dots && commas) {
+      var dec = x.lastIndexOf('.') > x.lastIndexOf(',') ? '.' : ',';
+      var th = dec === '.' ? ',' : '.';
+      v = parseFloat(x.split(th).join('').replace(dec, '.'));
+    } else if (dots || commas) {
+      var sep = dots ? '.' : ',', parts = x.split(sep), last = parts[parts.length - 1];
+      if ((dots || commas) > 1 || (last.length === 3 && parts[0].length >= 1 && parts[0].length <= 3)) v = parseFloat(parts.join(''));
+      else v = parseFloat(parts.join('.'));
+    } else v = parseFloat(x);
+    if (!isFinite(v)) return NaN;
+    v = Math.round(v);
+    return neg ? -v : v;
+  }
+  function fechaValida(y, m, d) {
+    var dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+  }
+  /* "2026-11-08", "08/11/2026", "8-11-2026" → "2026-11-08"; null si no es una fecha real. */
+  function parseFecha(s) {
+    var x = String(s == null ? '' : s).trim(), m, y, mo, d;
+    if ((m = x.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if ((m = x.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3]; }
+    else return null;
+    return fechaValida(y, mo, d) ? y + '-' + pad(mo) + '-' + pad(d) : null;
+  }
+  function hoyISO(d) { d = d || new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function mesDe(f) { return f.slice(0, 7); }
+  function sinTildes(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+
+  /* ---------- matemática de créditos ---------- */
+  /* Cuota mensual constante (sistema francés), cuotas vencidas. i = tasa mensual (0,02 = 2 %). */
+  function cuotaFrancesa(capital, i, n) {
+    if (!(capital > 0 && n > 0)) return NaN;
+    if (!i) return capital / n;
+    return capital * i / (1 - Math.pow(1 + i, -n));
+  }
+  /* Tasa mensual implícita: la que iguala el capital recibido con el valor presente de las n cuotas.
+   * Es la TIR del flujo. Incluye cualquier cargo que esté dentro de la cuota. null si no hay solución (cuotas < capital). */
+  function tasaImplicita(capital, cuota, n) {
+    if (!(capital > 0 && cuota > 0 && n > 0)) return null;
+    var total = cuota * n;
+    if (Math.abs(total - capital) < 0.5) return 0;
+    if (total < capital) return null;
+    var lo = 0, hi = 1, k, m, pv;
+    for (k = 0; k < 120; k++) {
+      m = (lo + hi) / 2;
+      pv = cuota * (1 - Math.pow(1 + m, -n)) / m;
+      if (pv > capital) lo = m; else hi = m;
+    }
+    return (lo + hi) / 2;
+  }
+  function anualDesdeMensual(i) { return Math.pow(1 + i, 12) - 1; }
+  function mensualDesdeAnual(a) { return Math.pow(1 + a, 1 / 12) - 1; }
+  /* Extrapolación para pagos únicos de pocos días: (pago/capital)^(365/días) − 1. Solo sirve para comparar; NO es la CAE. */
+  function anualizadoPagoUnico(capital, pago, dias) {
+    if (!(capital > 0 && pago >= capital && dias > 0)) return null;
+    return Math.pow(pago / capital, 365 / dias) - 1;
+  }
+  /* Valor presente de las cuotas que faltan: estimación del saldo adeudado. */
+  function saldoPendiente(cuota, i, restantes) {
+    if (!(cuota > 0 && restantes > 0)) return 0;
+    if (!i) return cuota * restantes;
+    return cuota * (1 - Math.pow(1 + i, -restantes)) / i;
+  }
+
+  /* o = {capital, plazo, unidad:'meses'|'dias', tipo:'cuotas'|'pago-unico', pago, tasaMensual?, cae?}
+   * tasaMensual y cae son fracciones (0,0245). Devuelve cifras + alertas en lenguaje claro. */
+  function evaluarOferta(o) {
+    var r = { total: null, extra: null, extraPct: null, iM: null, iA: null, anualEq: null, alertas: [] };
+    var cap = o.capital, pago = o.pago, n = o.plazo;
+    if (!(cap > 0 && pago > 0 && n > 0)) { r.alertas.push('Faltan datos para calcular.'); return r; }
+    if (o.tipo === 'cuotas') {
+      r.total = pago * n;
+      r.iM = tasaImplicita(cap, pago, n);
+      if (r.iM !== null) r.iA = anualDesdeMensual(r.iM);
+      else r.alertas.push('La suma de las cuotas es menor que el capital: revisa los datos.');
+    } else {
+      r.total = pago;
+      if (o.unidad === 'dias') r.anualEq = anualizadoPagoUnico(cap, pago, n);
+    }
+    r.extra = r.total - cap;
+    r.extraPct = r.extra / cap;
+    if (o.cae != null && r.iA != null && Math.abs(r.iA - o.cae) > 0.01) {
+      r.alertas.push('La tasa efectiva anual implícita (' + pct(r.iA) + ') difiere de la CAE informada (' + pct(o.cae) +
+        ') en ' + (Math.abs(r.iA - o.cae) * 100).toFixed(1).replace('.', ',') +
+        ' puntos. Puede deberse a seguros, comisiones, impuestos, la fecha del primer pago o un error de lectura: verifica el contrato.');
+    }
+    if (o.tasaMensual != null && r.iM != null && r.iM - o.tasaMensual > 0.0015) {
+      r.alertas.push('La tasa mensual implícita (' + pct(r.iM, 2) + ') es mayor que la informada (' + pct(o.tasaMensual, 2) +
+        '): la cuota podría incluir otros cargos.');
+    }
+    return r;
+  }
+
+  /* ---------- evidencia de cada movimiento ---------- */
+  /* V verificado (cartola/comprobante) · D declarado (lo dice el usuario) · P proyectado (fecha futura).
+   * Una fecha futura es siempre P; un P cuya fecha ya pasó se trata como D hasta que se confirme. */
+  function evEfectiva(m, hoy) {
+    if (m.f > hoy) return 'P';
+    return m.e === 'V' ? 'V' : 'D';
+  }
+  function signo(t) { return t === 'Ingreso' ? 1 : -1; }
+
+  /* ---------- agregados del control ---------- */
+  function totales(movs) {
+    var T = { Ingreso: 0, 'Inversión': 0, Costo: 0, Gasto: 0 };
+    movs.forEach(function (m) { T[m.t] += m.m; });
+    T.egresos = T['Inversión'] + T.Costo + T.Gasto;
+    T.sinDestino = T.Ingreso - T.egresos;
+    return T;
+  }
+  function porMes(movs) {
+    var map = {};
+    movs.forEach(function (m) {
+      var k = mesDe(m.f);
+      if (!map[k]) map[k] = { mes: k, Ingreso: 0, 'Inversión': 0, Costo: 0, Gasto: 0 };
+      map[k][m.t] += m.m;
+    });
+    return Object.keys(map).sort().map(function (k) { return map[k]; });
+  }
+  function topDescripciones(movs, n) {
+    var map = {}, total = 0;
+    movs.forEach(function (m) {
+      if (m.t === 'Ingreso') return;
+      var k = sinTildes(m.d.trim().toLowerCase());
+      if (!map[k]) map[k] = { d: m.d.trim(), v: 0, porTipo: {} };
+      map[k].v += m.m; total += m.m;
+      map[k].porTipo[m.t] = (map[k].porTipo[m.t] || 0) + m.m;
+    });
+    var arr = Object.keys(map).map(function (k) {
+      var x = map[k], best = null;
+      Object.keys(x.porTipo).forEach(function (t) { if (best === null || x.porTipo[t] > x.porTipo[best]) best = t; });
+      return { d: x.d, v: x.v, t: best, pct: total ? x.v / total : 0 };
+    });
+    arr.sort(function (a, b) { return b.v - a.v; });
+    return arr.slice(0, n || 10);
+  }
+  /* Monto por tipo y nivel de evidencia: { Ingreso:{V,D,P}, ... } */
+  function respaldoPorTipo(movs, hoy) {
+    var R = {};
+    TIPOS.forEach(function (t) { R[t] = { V: 0, D: 0, P: 0 }; });
+    movs.forEach(function (m) { R[m.t][evEfectiva(m, hoy)] += m.m; });
+    return R;
+  }
+  /* Parte del dinero ya ocurrido (fecha ≤ hoy) que está respaldada por evidencia verificada. null si no hay nada ocurrido. */
+  function indiceRespaldo(movs, hoy) {
+    var v = 0, tot = 0;
+    movs.forEach(function (m) {
+      if (m.f > hoy) return;
+      tot += m.m;
+      if (m.e === 'V') v += m.m;
+    });
+    return tot ? v / tot : null;
+  }
+  /* Caja acumulada en tres versiones:
+   *   V    solo lo verificado
+   *   VD   lo verificado + lo declarado (todo lo ya ocurrido)
+   *   VDP  lo anterior + lo proyectado (movimientos con fecha futura)
+   * saldo = {m, f, e} opcional (saldo inicial con su evidencia). Devuelve puntos en escalera y los valores de hoy. */
+  function cajaAcumulada(movs, saldo, hoy) {
+    var ev = [];
+    if (saldo && isFinite(saldo.m)) ev.push({ f: saldo.f, v: saldo.m, e: saldo.e === 'V' ? 'V' : 'D' });
+    movs.forEach(function (m) { ev.push({ f: m.f, v: signo(m.t) * m.m, e: evEfectiva(m, hoy) }); });
+    if (!ev.length) return { puntos: [], hoy: null, fin: null };
+    ev.sort(function (a, b) { return a.f < b.f ? -1 : a.f > b.f ? 1 : 0; });
+    var fechas = [], seen = {};
+    ev.forEach(function (e) { if (!seen[e.f]) { seen[e.f] = 1; fechas.push(e.f); } });
+    if (!seen[hoy]) { fechas.push(hoy); fechas.sort(); }
+    var V = 0, VD = 0, VDP = 0, i = 0, puntos = [], deHoy = null;
+    fechas.forEach(function (f) {
+      while (i < ev.length && ev[i].f === f) {
+        var e = ev[i++];
+        if (e.e === 'V') { V += e.v; VD += e.v; VDP += e.v; }
+        else if (e.e === 'D') { VD += e.v; VDP += e.v; }
+        else VDP += e.v;
+      }
+      var p = { f: f, V: V, VD: VD, VDP: VDP };
+      puntos.push(p);
+      if (f === hoy) deHoy = p;
+    });
+    return { puntos: puntos, hoy: deHoy, fin: puntos[puntos.length - 1] };
+  }
+  /* Ingreso mensual promedio para medir la carga financiera, en dos versiones: solo verificado y verificado + declarado.
+   * Usa hasta n meses completos anteriores al actual con ingresos; si no hay, el mes en curso (parcial). */
+  function ingresosPromedio(movs, hoy, n) {
+    var mesHoy = mesDe(hoy), porM = {};
+    movs.forEach(function (m) {
+      if (m.t !== 'Ingreso' || m.f > hoy) return;
+      var k = mesDe(m.f);
+      if (!porM[k]) porM[k] = { V: 0, VD: 0 };
+      porM[k].VD += m.m;
+      if (m.e === 'V') porM[k].V += m.m;
+    });
+    var meses = Object.keys(porM).filter(function (k) { return k < mesHoy && porM[k].VD > 0; }).sort().slice(-(n || 3));
+    var parcial = false;
+    if (!meses.length && porM[mesHoy] && porM[mesHoy].VD > 0) { meses = [mesHoy]; parcial = true; }
+    if (!meses.length) return null;
+    var sV = 0, sVD = 0;
+    meses.forEach(function (k) { sV += porM[k].V; sVD += porM[k].VD; });
+    return { V: sV / meses.length, VD: sVD / meses.length, meses: meses, parcial: parcial };
+  }
+
+  /* ---------- validación e importación ---------- */
+  function normalizarTipo(s) {
+    var x = sinTildes(String(s || '').trim().toLowerCase());
+    if (x === 'ingreso' || x === 'ingresos') return 'Ingreso';
+    if (x === 'inversion' || x === 'inversiones') return 'Inversión';
+    if (x === 'costo' || x === 'costos') return 'Costo';
+    if (x === 'gasto' || x === 'gastos') return 'Gasto';
+    return null;
+  }
+  function normalizarEvidencia(s) {
+    var x = sinTildes(String(s || '').trim().toLowerCase());
+    return (x === 'v' || x === 'verificado' || x === 'cartola') ? 'V' : 'D';
+  }
+  /* Devuelve un texto de error o null. */
+  function validarMov(m) {
+    if (!m.f || !parseFecha(m.f)) return 'La fecha no es válida.';
+    if (TIPOS.indexOf(m.t) < 0) return 'El tipo debe ser Ingreso, Inversión, Costo o Gasto.';
+    if (!m.d || !String(m.d).trim()) return 'Falta la descripción.';
+    if (!(m.m > 0) || !isFinite(m.m)) return 'El monto debe ser mayor que cero.';
+    return null;
+  }
+  function dividirLineas(texto) {
+    var filas = [], fila = [], campo = '', q = false, i, c, delim;
+    var primera = (texto.split(/\r?\n/).filter(function (l) { return l.trim(); })[0]) || '';
+    var cuentas = { '\t': (primera.match(/\t/g) || []).length, ';': (primera.match(/;/g) || []).length, ',': (primera.match(/,/g) || []).length };
+    delim = cuentas['\t'] ? '\t' : (cuentas[';'] >= cuentas[','] && cuentas[';'] ? ';' : ',');
+    for (i = 0; i < texto.length; i++) {
+      c = texto.charAt(i);
+      if (q) {
+        if (c === '"') { if (texto.charAt(i + 1) === '"') { campo += '"'; i++; } else q = false; }
+        else campo += c;
+      } else if (c === '"') q = true;
+      else if (c === delim) { fila.push(campo); campo = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && texto.charAt(i + 1) === '\n') i++;
+        fila.push(campo); campo = '';
+        if (fila.some(function (x) { return x.trim(); })) filas.push(fila);
+        fila = [];
+      } else campo += c;
+    }
+    fila.push(campo);
+    if (fila.some(function (x) { return x.trim(); })) filas.push(fila);
+    return filas;
+  }
+  /* CSV/Excel pegado: columnas fecha, tipo, descripción, monto y (opcional) evidencia. Con o sin encabezado. */
+  function importarTexto(texto) {
+    var filas = dividirLineas(String(texto || '')), ok = [], errores = [];
+    if (!filas.length) return { filas: ok, errores: errores };
+    var cab = filas[0].map(function (x) { return sinTildes(x.trim().toLowerCase()); });
+    var idx = { f: 0, t: 1, d: 2, m: 3, e: 4 }, inicio = 0;
+    if (cab.indexOf('fecha') >= 0 && cab.indexOf('monto') >= 0) {
+      inicio = 1;
+      idx = { f: cab.indexOf('fecha'), t: cab.indexOf('tipo'), d: Math.max(cab.indexOf('descripcion'), cab.indexOf('concepto')), m: cab.indexOf('monto'),
+              e: Math.max(cab.indexOf('evidencia'), cab.indexOf('fuente')) };
+      if (idx.t < 0 || idx.d < 0) return { filas: ok, errores: [{ n: 1, motivo: 'El encabezado debe incluir fecha, tipo, descripcion y monto.' }] };
+    }
+    for (var i = inicio; i < filas.length; i++) {
+      var r = filas[i], n = i + 1;
+      var f = parseFecha(r[idx.f]), t = normalizarTipo(r[idx.t]), d = String(r[idx.d] == null ? '' : r[idx.d]).trim(), m = parseMonto(r[idx.m]);
+      var motivo = !f ? 'fecha no válida' : !t ? 'tipo no reconocido' : !d ? 'falta la descripción' : !(m > 0) ? 'monto no válido' : null;
+      if (motivo) { errores.push({ n: n, motivo: motivo }); continue; }
+      ok.push({ f: f, t: t, d: d, m: m, e: idx.e >= 0 ? normalizarEvidencia(r[idx.e]) : 'D' });
+    }
+    return { filas: ok, errores: errores };
+  }
+
+  return {
+    TIPOS: TIPOS, pct: pct, parseMonto: parseMonto, parseFecha: parseFecha, hoyISO: hoyISO, mesDe: mesDe, sinTildes: sinTildes,
+    cuotaFrancesa: cuotaFrancesa, tasaImplicita: tasaImplicita, anualDesdeMensual: anualDesdeMensual, mensualDesdeAnual: mensualDesdeAnual,
+    anualizadoPagoUnico: anualizadoPagoUnico, saldoPendiente: saldoPendiente, evaluarOferta: evaluarOferta,
+    evEfectiva: evEfectiva, signo: signo, totales: totales, porMes: porMes, topDescripciones: topDescripciones,
+    respaldoPorTipo: respaldoPorTipo, indiceRespaldo: indiceRespaldo, cajaAcumulada: cajaAcumulada, ingresosPromedio: ingresosPromedio,
+    normalizarTipo: normalizarTipo, validarMov: validarMov, importarTexto: importarTexto
+  };
+});

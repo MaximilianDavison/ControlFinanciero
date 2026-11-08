@@ -1,31 +1,48 @@
 # Orden financiero
 
-Página estática (HTML + JS) con Supabase (Auth + Postgres) para el teorema **Ingresos − Inversión − Costos − Gastos = 0**.
+Página estática (HTML, CSS y JavaScript, sin dependencias ni paso de compilación) para controlar el dinero con una regla simple: **Ingresos − Inversión − Costos − Gastos = lo que queda sin destino**. La meta es que nada sobre sin destino y que nada falte.
 
-## 1. Supabase
-1. Crea un proyecto y abre **SQL Editor**; pega y ejecuta `supabase/schema.sql`.
-2. **Authentication → Providers**: deja habilitado Email.
-3. Crea tu usuario (Authentication → Users → Add user, con "Auto confirm") o usa "Crear cuenta" en la página.
-4. Cuando tengas tu usuario, desactiva **Allow new users to sign up** (Authentication → Sign In / Providers) si es de uso personal.
-5. **Project Settings → API**: copia *Project URL* y la clave *anon / publishable*.
+**No trae datos de ejemplo.** Parte vacía; lo que se ve es lo que el usuario registra. Los únicos datos incluidos son las ofertas y la ficha de tarjeta que el usuario capturó de sus propias apps el 08-11-2026 (`datos.js`), con su procedencia, y se muestran como *simulación observada*, nunca como deuda.
 
-## 2. Configuración
-Edita `config.js` con esos dos valores. Es seguro commitearlos: la protección real son las políticas RLS. **Nunca** subas la clave `service_role`.
+## Las tres pestañas
+1. **Control.** Registro de movimientos (a mano, pegando desde Excel o importando CSV), indicadores del período, destino de cada peso, evolución mensual, dónde se va el dinero y respaldo en CSV/JSON.
+2. **Financiamiento.** Compara ofertas y créditos con una misma vara, la **tasa efectiva anual implícita** que resulta de las cuotas, y la contrasta con la tasa y la CAE que informa la oferta. Mide la carga financiera sobre el ingreso y muestra tarjetas con cupo. Las tasas nunca se escriben por el usuario: salen de la oferta o del contrato.
+3. **Brecha de evidencia.** Cada cifra declara de dónde viene: **Verificado** (cartola o comprobante), **Declarado** (lo dice el usuario) o **Proyectado** (fecha futura). La pestaña muestra la caja en tres versiones (respaldada, declarada y esperada), la brecha entre ellas, el índice de respaldo y la lista de lo que falta verificar.
 
-## 3. Probar en local
-`npx serve .` y abre la URL que indique (no abras el archivo con doble clic: la sesión necesita http).
+## Reglas de evidencia
+- Una fecha futura es siempre *Proyectado*; no se puede declarar verificado algo que aún no ocurre.
+- Un proyectado cuya fecha ya pasó cuenta como *Declarado* hasta que se confirme.
+- Verificar exige indicar el documento que lo respalda; queda guardado junto con la fecha de verificación.
+- El saldo inicial declarado no entra en la caja respaldada.
 
-## 4. GitHub y Vercel
-```bash
-git init && git add . && git commit -m "Orden financiero"
-git branch -M main
-git remote add origin https://github.com/TU_USUARIO/orden-financiero.git
-git push -u origin main
+## Fórmulas (`finanzas.js`, con pruebas)
+- Cuota francesa: `C·i / (1 − (1+i)^−n)`.
+- **Tasa implícita:** la `i` que iguala el capital recibido con el valor presente de las `n` cuotas (TIR, por bisección). Incluye todo lo que esté dentro de la cuota.
+- Tasa efectiva anual: `(1+i)^12 − 1`.
+- Pago único de pocos días: `(pago/capital)^(365/días) − 1`. Es una **extrapolación para comparar, no la CAE**.
+- La CAE oficial incluye intereses, gastos y seguros expresados en forma anual (SERNAC). Si la implícita difiere de la CAE informada en más de un punto, la tabla lo avisa.
+- Carga financiera: `Σ cuotas / ingreso mensual promedio`, en un rango: con ingresos verificados y con verificados + declarados.
+
+## Pruebas
 ```
-En Vercel: **Add New → Project → importa el repo**, Framework Preset **Other**, sin Build Command ni Output Directory (se sirve la raíz). Después, en Supabase **Authentication → URL Configuration**, pon la URL de Vercel como *Site URL* y agrégala a *Redirect URLs*.
+node tests/finanzas.test.js   # 24 pruebas del motor: formatos, créditos, evidencia, importación
+node tests/e2e.js             # 72 comprobaciones en un navegador real (requiere Playwright)
+```
+Los datos que usan las pruebas son de prueba y viven solo en ellas. La prueba de extremo a extremo verifica cifras contra un cálculo manual, la migración de datos antiguos, la importación con duplicados, el respaldo y la restauración, el escape de HTML, el modo móvil y el modo oscuro.
 
-## Cómo sincroniza
-Cada cambio se guarda tras 700 ms: la página compara el estado con lo último guardado y hace insert, update o delete de lo que cambió. Filas incompletas o con monto negativo no se envían hasta que las corrijas. "Restaurar datos iniciales" e "Importar" reemplazan todos tus movimientos en la nube.
+## Datos y privacidad
+Todo se guarda en `localStorage` de este navegador (clave `orden_financiero_v3`); nada se envía a ningún servidor. Para llevar los datos a otro dispositivo, usar «Respaldo completo (JSON)». **El sitio publicado es público**: cualquier dato incluido en `datos.js` lo puede leer quien tenga la dirección.
+Si la versión anterior dejó datos en el navegador (`orden_financiero_v2`), la página los detecta, reconoce los datos de ejemplo que esa versión traía y deja que el usuario decida qué importar. Nada se importa solo.
 
-## Páginas comerciales (borrador)
-En `comercial/` hay cuatro páginas HTML estáticas para revisar las ofertas piloto: `index.html` (portada), `diagnostico.html`, `tablero.html` y `plan.html`. No necesitan Supabase ni configuración. Para verlas en local: `npx serve comercial` y abre la URL indicada. Los precios son hipótesis sin aprobar y todos los datos de ejemplo son ficticios. No se han desplegado.
+## Publicar
+Vercel: *Add New → Project*, Framework Preset **Other**, sin comando de compilación ni carpeta de salida (se sirve la raíz). Para probar en local: `npx serve .` (también funciona abriendo `index.html`).
+
+## Cómo ampliar
+- Instituciones sugeridas, ofertas observadas y fichas: `datos.js`.
+- Un cálculo nuevo va en `finanzas.js` junto con su prueba en `tests/finanzas.test.js`.
+
+## Limitaciones
+- No hay carga de cartolas ni conciliación automática: hoy se verifica a mano, indicando el documento.
+- No sincroniza entre dispositivos (la versión con Supabase quedó en `legacy/`).
+- La tasa implícita supone cuotas mensuales iguales al final de cada mes; con otras fechas de pago puede diferir levemente de la CAE contractual.
+- No es asesoría financiera, tributaria ni legal.
