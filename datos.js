@@ -37,6 +37,17 @@ window.DATOS = {
       fuente: 'Captura del usuario, 08-11-2026. Ficha: registros/2026-11-08-tenpo-tarjeta-credito.md' }
   ],
 
+  /* Depósitos a plazo observados (UF, con reinversión). La tasa es REAL anual sobre la UF: la ganancia total suma la variación de la UF. */
+  DAP_OBSERVADOS: [
+    { id: 'ccb-91',  inst: 'CCB Bolsa', plazo: 91,  real: 0.2, periodo: 0.0506 },
+    { id: 'ccb-120', inst: 'CCB Bolsa', plazo: 120, real: 0.4, periodo: 0.1333 },
+    { id: 'ccb-150', inst: 'CCB Bolsa', plazo: 150, real: 0.5, periodo: 0.2083 },
+    { id: 'ccb-182', inst: 'CCB Bolsa', plazo: 182, real: 0.5, periodo: 0.2528 },
+    { id: 'ccb-270', inst: 'CCB Bolsa', plazo: 270, real: 1.4, periodo: 1.0500 },
+    { id: 'ccb-360', inst: 'CCB Bolsa', plazo: 360, real: 1.5, periodo: 1.5000 }
+  ],
+  DAP_NOTA: 'Captura del usuario, 08-11-2026 (CCB Bolsa, moneda UF). La pantalla advierte que estos depósitos NO son anticipables: no se pueden retirar antes del vencimiento. Las tasas cambian a diario; confírmalas antes de invertir.',
+
   /* Hechos que el usuario ya documentó con captura y que puede traer al control con un clic (quedan como «Declarado»). */
   HECHOS_DOCUMENTADOS: [
     { id: 'tenpo-claude-20261101', mov: { f: '2026-11-01', t: 'Gasto', d: 'Suscripción Anthropic Claude (tarjeta Tenpo)', m: 20615, e: 'D' },

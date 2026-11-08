@@ -272,5 +272,15 @@ t('alertas cortas acompañan a las largas', function () {
   var r = F.evaluarOferta({ capital: 4037370, plazo: 60, unidad: 'meses', tipo: 'cuotas', pago: 130674, cae: 0.3002 });
   assert.strictEqual(r.cortas.length, r.alertas.length); assert.ok(r.cortas[0].length < 80);
 });
+t('metaAhorro: sin interés es aritmética pura', function () {
+  var r = F.metaAhorro({ ingreso: 300, meses: 2, capital: 0, ahorro: 100, real: 0, varUF: 0, horizonte: 36 });
+  assert.strictEqual(r.meta, 600); assert.strictEqual(r.mesMeta, 6); cerca(r.saldo12, 1200, 1e-9); cerca(r.intereses12, 0, 1e-9);
+  assert.strictEqual(F.metaAhorro({ ingreso: 300, meses: 2, capital: 600, ahorro: 0, real: 0, varUF: 0 }).mesMeta, 0);
+  assert.strictEqual(F.metaAhorro({ ingreso: 300, meses: 2, capital: 0, ahorro: 1, real: 0, varUF: 0, horizonte: 36 }).mesMeta, null);
+});
+t('metaAhorro: con tasa mensual 1 % el capital compone', function () {
+  var r = F.metaAhorro({ ingreso: 1000, meses: 1, capital: 1000, ahorro: 0, real: 0, varUF: (Math.pow(1.01, 12) - 1) * 100 });
+  cerca(r.tm, 0.01, 1e-9); cerca(r.saldo12, 1000 * Math.pow(1.01, 12), 1e-6); cerca(r.intereses12, r.saldo12 - 1000, 1e-6);
+});
 
 console.log('\n' + pasadas + ' pruebas pasadas' + (process.exitCode ? ' — HAY FALLAS' : ''));

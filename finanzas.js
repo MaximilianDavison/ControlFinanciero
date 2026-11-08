@@ -308,6 +308,19 @@
     return d.per === 'anual' ? mensualDesdeAnual(t) : t;
   }
   function interesDeposito(d, nDias) { return d.monto * tasaMensualDeposito(d) * nDias / 30; }
+
+  /* Meta de ahorro (p. ej. 6 meses de ingreso) con capital que rinde a una tasa real sobre UF + variación UF supuesta.
+     Cada mes: saldo = saldo·(1+tm) + ahorro. Supone reinversión al mismo ritmo, sin impuestos. */
+  function metaAhorro(p) {
+    var meta = p.ingreso * p.meses, tm = tasaMensualDeposito({ tipo: 'uf', tasa: p.real, varUF: p.varUF }), h = p.horizonte || 36;
+    var saldo = p.capital, aportes = p.capital, intereses = 0, mesMeta = saldo >= meta ? 0 : null, s12 = null, i12 = null;
+    for (var m = 1; m <= h; m++) {
+      var g = saldo * tm; saldo += g + p.ahorro; aportes += p.ahorro; intereses += g;
+      if (mesMeta === null && saldo >= meta) mesMeta = m;
+      if (m === 12) { s12 = saldo; i12 = intereses; }
+    }
+    return { meta: meta, tm: tm, anualEf: anualDesdeMensual(tm), mesMeta: mesMeta, saldo12: s12, intereses12: i12, saldoH: saldo, interesesH: intereses, horizonte: h };
+  }
   function estadoDeposito(d, hoy) {
     var total = dias(d.f0, d.fv), trans = Math.min(Math.max(dias(d.f0, hoy), 0), total), rest = dias(hoy, d.fv), tm = tasaMensualDeposito(d);
     return { total: total, trans: trans, restantes: rest, vencido: rest <= 0, noIniciado: hoy < d.f0, tm: tm, anualEf: anualDesdeMensual(tm),
@@ -367,7 +380,7 @@
     cuotaFrancesa: cuotaFrancesa, tasaImplicita: tasaImplicita, anualDesdeMensual: anualDesdeMensual, mensualDesdeAnual: mensualDesdeAnual,
     anualizadoPagoUnico: anualizadoPagoUnico, saldoPendiente: saldoPendiente, evaluarOferta: evaluarOferta,
     evEfectiva: evEfectiva, signo: signo, totales: totales, porMes: porMes, topDescripciones: topDescripciones,
-    respaldoPorTipo: respaldoPorTipo, indiceRespaldo: indiceRespaldo, cajaAcumulada: cajaAcumulada, ingresosPromedio: ingresosPromedio,
+    respaldoPorTipo: respaldoPorTipo, indiceRespaldo: indiceRespaldo, cajaAcumulada: cajaAcumulada, ingresosPromedio: ingresosPromedio, metaAhorro: metaAhorro,
     normalizarTipo: normalizarTipo, validarMov: validarMov, importarTexto: importarTexto,
     dias: dias, tasaMensualDeposito: tasaMensualDeposito, interesDeposito: interesDeposito, estadoDeposito: estadoDeposito, rescateHoy: rescateHoy,
     saldoCredito: saldoCredito, simularCredito: simularCredito, costoDiario: costoDiario, pagarHoy: pagarHoy, extenderVsPrepagar: extenderVsPrepagar,

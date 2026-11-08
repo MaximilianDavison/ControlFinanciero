@@ -245,6 +245,28 @@ var salida = process.env.SALIDA || os.tmpdir();
 
   await p.click('#tab-control'); await p.waitForTimeout(100);
 
+
+  console.log('M · Meta de ahorro y tasas observadas');
+  await p.click('#tab-financiamiento'); await abrir(p);
+  ok('sin datos, la meta pide ingreso y ahorro (no inventa)', /Escribe tu ingreso mensual/.test(await t(p, '#mt-res')));
+  await p.click('#mt-ej'); await p.waitForTimeout(150);
+  var base = Fin.metaAhorro({ ingreso: 1000000, meses: 6, capital: 1000000, ahorro: 250000, real: 1.5, varUF: 4, horizonte: 36 });
+  var opt = Fin.metaAhorro({ ingreso: 1000000, meses: 6, capital: 1000000, ahorro: 300000, real: 1.5, varUF: 5, horizonte: 36 });
+  var tm2 = await tc(p, '#mt-res');
+  ok('ejemplo: meta $6.000.000 y escenario base en ' + base.mesMeta + ' meses', tm2.indexOf('llegas a $6.000.000 en ' + base.mesMeta + ' meses') >= 0, tm2);
+  ok('ejemplo: optimista en ' + opt.mesMeta + ' meses y saldo a 12 meses ' + m$(base.saldo12), tm2.indexOf(opt.mesMeta + ' meses') >= 0 && tm2.indexOf(m$(base.saldo12)) >= 0, tm2);
+  ok('advierte que los depósitos no son anticipables', /no se pueden retirar antes del vencimiento/.test(tm2));
+  await p.selectOption('#mt-plazo', 'ccb-91'); await p.waitForTimeout(100);
+  var b91 = Fin.metaAhorro({ ingreso: 1000000, meses: 6, capital: 1000000, ahorro: 250000, real: 0.2, varUF: 4, horizonte: 36 });
+  ok('con el depósito de 91 días recalcula', (await tc(p, '#mt-res')).indexOf('en ' + b91.mesMeta + ' meses') >= 0);
+  await abrir(p); await p.click('#meta [data-usar-dap="5"]'); await p.waitForTimeout(150);
+  ok('«Usar en mi depósito» precarga UF 1,5%, 360 días y retiro sin intereses', (await p.inputValue('#d-tipo')) === 'uf' && (await p.inputValue('#d-tasa')) === '1,5' && (await p.inputValue('#d-retiro')) === 'pierde-intereses' && Fin.dias(await p.inputValue('#d-f0'), await p.inputValue('#d-fv')) === 360);
+  await p.reload(); await p.waitForTimeout(300); await p.click('#tab-financiamiento');
+  ok('la meta persiste al recargar', (await p.inputValue('#mt-aho')) === '250.000');
+  await p.fill('#mt-aho', '1'); await p.waitForTimeout(100);
+  ok('ahorro insuficiente: avisa que no alcanza en 36 meses', /no alcanzas la meta/.test(await tc(p, '#mt-res')));
+  await p.click('#tab-control'); await p.waitForTimeout(100);
+
   console.log('I · Seguridad: texto del usuario no se ejecuta');
   await agregar(p, dia(-2), 'Gasto', '<img src=x onerror="window.__x=1"><b>x</b>', '1.000'); await p.waitForTimeout(200);
   ok('el HTML escrito se muestra como texto y no se ejecuta', (await p.evaluate(function () { return window.__x; })) === undefined && /<img src=x/.test(await t(p, '#l-tabla')));

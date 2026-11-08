@@ -66,3 +66,9 @@ Pedido de Maximilian: simplificar la pestaña y comparar «crédito de consumo v
 - **Comparador de ofertas simplificado:** 5 columnas, alertas cortas y detalle plegado.
 - **Verificación:** 37 pruebas unitarias con cálculos a mano y 100 comprobaciones e2e (las cifras de pantalla se contrastan con el motor), sin desborde en escritorio, móvil ni modo oscuro.
 - Sigue sin estar en `main`; falta auditoría de ChatGPT.
+
+## Adenda 2: meta de ahorro y tasas de depósitos observadas
+- Se agregó en la pestaña Financiamiento (no en una nueva) la tarjeta «Meta de ahorro: ¿mi estrategia alcanza?»: meta = N meses de ingreso, capital actual, ahorro mensual y depósito elegido; tres escenarios (UF 3 %, 4 %, 5 %; ahorro ×0,8, ×1, ×1,2).
+- Tasas tomadas de la captura de CCB Bolsa (08-11-2026, UF, con reinversión): 91 d 0,2 %, 120 d 0,4 %, 150 d 0,5 %, 182 d 0,5 %, 270 d 1,4 %, 360 d 1,5 % reales anuales. La captura dice que **no son anticipables**: contradice el supuesto «retiro sin costo» de los depósitos generales, así que el botón «Usar en mi depósito» los deja como «pierde intereses».
+- El botón «Cargar ejemplo hipotético» (ingreso $1.000.000, capital $1.000.000, ahorro $250.000) es solo ilustrativo y está rotulado así; no son datos del usuario.
+- Pruebas: 39 unitarias, 108 e2e.
