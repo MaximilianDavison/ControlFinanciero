@@ -18,6 +18,7 @@
   <nav class="tabs" role="tablist" aria-label="Secciones">
     <button role="tab" id="tab-control" aria-controls="p-control" data-tab="control">Control</button>
     <button role="tab" id="tab-financiamiento" aria-controls="p-financiamiento" data-tab="financiamiento">Financiamiento</button>
+    <button role="tab" id="tab-capital" aria-controls="p-capital" data-tab="capital">Capital</button>
     <button role="tab" id="tab-brecha" aria-controls="p-brecha" data-tab="brecha">Brecha de evidencia</button>
   </nav>
 </div></header>
@@ -97,7 +98,6 @@
 
     <div class="card" id="dec"></div>
 
-    <div class="card" id="meta"></div>
 
     <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
       <div class="card" id="dap-card">
@@ -185,6 +185,21 @@
   </section>
 
   <!-- ===================== 3 · BRECHA DE EVIDENCIA ===================== -->
+  <section id="p-capital" class="panel" role="tabpanel" aria-labelledby="tab-capital" hidden>
+    <div class="head"><div><h2>Capital</h2>
+      <p class="sub">Tu colchón de trabajo: lo que tienes líquido menos lo que debes. Aquí pruebas estrategias (ahorrar, pagar deudas primero, pedir un préstamo para invertir, usar la tarjeta) en tres escenarios y ves cuál te lleva a tu meta.</p></div></div>
+    <div class="card" id="meta"></div>
+    <div class="card" id="tarj"></div>
+    <details class="card" id="cap-inv"><summary>Qué dice la investigación (orientación general, no es norma)</summary>
+      <ul class="lineas">
+        <li><b>Colchón de emergencia:</b> la referencia habitual en educación financiera es de 3 a 6 meses de gastos esenciales; más (6 a 12) si el ingreso es variable o hay dependientes. No es una norma chilena. Fuentes: <a href="https://monedario.cl/posts/fondo-emergencia-chile/" target="_blank" rel="noopener">Monedario</a>, <a href="https://finantres.com/fondo-de-emergencia-chile/" target="_blank" rel="noopener">Finantres</a>.</li>
+        <li><b>Base de cálculo:</b> usa gastos esenciales de los últimos meses, no el sueldo. Si partes de cero, apunta primero a 1 mes.</li>
+        <li><b>Avalancha o bola de nieve:</b> la avalancha paga primero la deuda de mayor tasa y cuesta menos en intereses; la bola de nieve parte por el saldo menor y motiva más. Esta pestaña simula la avalancha. Fuente: <a href="https://www.t13.cl/noticia/tendencias/bbc/como-funcionan-metodos-avalancha-bola-nieve-pagar-deudas-17-08-2022" target="_blank" rel="noopener">T13</a>.</li>
+        <li><b>Tarjeta:</b> el pago mínimo cubre sobre todo intereses y alarga la deuda por años; desde junio de 2026 la CMF exige un mínimo más alto, con aplicación gradual hasta 2028. Verifica la fórmula vigente en la CMF. Fuente: <a href="https://www.t13.cl/noticia/te-puede-servir/comenzo-regir-nueva-norma-aumentar-pago-minimo-tarjetas-credito-como-funciona-4-6-2026" target="_blank" rel="noopener">T13</a>.</li>
+        <li><b>Límite:</b> las tasas de depósitos y créditos cambian a diario; las cifras de la pestaña son supuestos tuyos o capturas fechadas. No es asesoría financiera.</li>
+      </ul></details>
+  </section>
+
   <section id="p-brecha" class="panel" role="tabpanel" aria-labelledby="tab-brecha" hidden>
     <div class="panel-head"><div><h2>Brecha de evidencia</h2>
       <p class="sub">La mayoría de las apps te muestran un saldo como si fuera un hecho. Aquí cada cifra declara de dónde viene. Ves cuánta de tu caja está respaldada por documentos, cuánta depende de tu palabra y cuánta del futuro, y qué falta verificar para cerrar la brecha.</p></div></div>

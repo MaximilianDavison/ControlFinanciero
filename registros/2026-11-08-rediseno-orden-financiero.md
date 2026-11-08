@@ -72,3 +72,10 @@ Pedido de Maximilian: simplificar la pestaña y comparar «crédito de consumo v
 - Tasas tomadas de la captura de CCB Bolsa (08-11-2026, UF, con reinversión): 91 d 0,2 %, 120 d 0,4 %, 150 d 0,5 %, 182 d 0,5 %, 270 d 1,4 %, 360 d 1,5 % reales anuales. La captura dice que **no son anticipables**: contradice el supuesto «retiro sin costo» de los depósitos generales, así que el botón «Usar en mi depósito» los deja como «pierde intereses».
 - El botón «Cargar ejemplo hipotético» (ingreso $1.000.000, capital $1.000.000, ahorro $250.000) es solo ilustrativo y está rotulado así; no son datos del usuario.
 - Pruebas: 39 unitarias, 108 e2e.
+
+## Adenda 3: pestaña «Capital» (escenarios)
+- **Investigación previa** (fuentes en la propia pestaña): colchón de 3 a 6 meses de gasto esencial (orientación, no norma chilena); avalancha vs. bola de nieve; el pago mínimo de tarjeta cubre sobre todo intereses (la CMF subió el mínimo desde junio de 2026, gradual hasta 2028; fórmula sin verificar en la fuente primaria).
+- **Objetivo:** Capital = dinero líquido − deudas; meta = N meses de gasto esencial.
+- **Estrategias × escenarios:** ahorrar, pagar deudas primero (avalancha), pedir préstamo para invertir; pesimista (ingreso −15 %, gasto +10 %, UF 3 %), realista (UF 4 %), optimista (ingreso +10 %, gasto −5 %, UF 5 %). Tarjeta: pagar total, cuota fija o mínimo (intereses + 1 % del saldo), y ventaja de pagar a N días.
+- La tarjeta «Meta de ahorro» de Financiamiento se movió y amplió aquí. Sin datos de ejemplo salvo el botón rotulado «hipotético».
+- Pruebas: 45 unitarias, 119 e2e. Rama `claude/rediseno-orden-financiero`; **no** pasada a `main` todavía.

@@ -68,7 +68,7 @@
   function cambiado() { guardar(); renderTodo(); }
 
   /* ---------- pestañas ---------- */
-  var TABS = ['control', 'financiamiento', 'brecha'];
+  var TABS = ['control', 'financiamiento', 'capital', 'brecha'];
   function mostrar(tab, sinHash) {
     if (TABS.indexOf(tab) < 0) tab = 'control';
     TABS.forEach(function (t) {
@@ -458,39 +458,101 @@
   }
 
 
-  /* ---- meta de ahorro: ¿mi estrategia alcanza? ---- */
-  var ESC = [['Conservador', 3, 0.8], ['Base', 4, 1], ['Optimista', 5, 1.2]];
+  /* ---- pestaña Capital: objetivo, estrategias y escenarios ---- */
+  var ESCEN = [['Pesimista', -0.15, 0.10, 3], ['Realista', 0, 0, 4], ['Optimista', 0.10, -0.05, 5]];
+  var ESTRAT = [['ahorrar', 'Ahorrar (depósito a plazo)'], ['deuda', 'Pagar deudas primero (avalancha) y luego ahorrar'], ['prestamo', 'Pedir un préstamo, invertirlo y ahorrar']];
+  function gastoProm() {
+    var porM = {}, mh = hoy().slice(0, 7);
+    S.mov.forEach(function (x) { if ((x.t === 'Costo' || x.t === 'Gasto') && x.f <= hoy()) porM[x.f.slice(0, 7)] = (porM[x.f.slice(0, 7)] || 0) + x.m; });
+    var ks = Object.keys(porM).filter(function (k) { return k < mh; }).sort().slice(-3);
+    return ks.length ? ks.reduce(function (s, k) { return s + porM[k]; }, 0) / ks.length : 0;
+  }
+  function pct(x) { return String(x).replace('.', ','); }
+  function nIn(id, k, tipo, label, val, ph, wide) {
+    return '<label class="field' + (wide ? ' wide' : '') + '"><span>' + label + '</span><input id="' + id + '" data-k="' + k + '" data-t="' + tipo + '" type="text" inputmode="decimal" value="' + esc(val ? (tipo === 'm' ? nf.format(val) : pct(val)) : '') + '" placeholder="' + esc(ph || '0') + '"></label>';
+  }
   function renderMeta() {
     var el = $('meta'), m = S.cfg.meta || (S.cfg.meta = {});
     if (m.plazo === undefined) m.plazo = 'ccb-360'; if (!(m.meses > 0)) m.meses = 6;
-    var ip = ingresoProm();
+    var ip = ingresoProm(), gp = gastoProm();
     var opt = D.DAP_OBSERVADOS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === m.plazo ? ' selected' : '') + '>' + x.plazo + ' días · ' + num(x.real, 2) + '% real anual sobre UF</option>'; }).join('');
     var filas = D.DAP_OBSERVADOS.map(function (x, i) {
       return '<tr><td>' + x.plazo + ' días</td><td>' + num(x.real, 2) + '%</td><td>' + num(x.periodo, 4) + '%</td><td><button class="btn small" type="button" data-usar-dap="' + i + '">Usar en mi depósito</button></td></tr>';
     }).join('');
-    el.innerHTML = '<h3>Meta de ahorro: ¿mi estrategia alcanza?</h3><p class="sub">Cuántos meses tardas en juntar tu meta (por ejemplo 6 meses de ingreso) si inviertes en depósitos a plazo y sigues ahorrando cada mes. Tres escenarios con la variación de la UF que supongas.</p>' +
+    el.innerHTML = '<h3>Objetivo: capital de ' + esc(m.meses) + ' meses</h3>' +
+      '<p class="sub"><b>Capital</b> = dinero líquido − deudas. <b>Meta</b> = meses de gasto esencial que quieres tener cubiertos (3 mínimo, 6 recomendado). Escribe tus cifras: no hay datos de ejemplo hasta que tú los cargues.</p>' +
       '<div class="form" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">' +
-      '<label class="field"><span>Ingreso mensual (CLP)</span><input id="mt-ing" type="text" inputmode="numeric" value="' + esc(m.ingreso ? nf.format(m.ingreso) : '') + '" placeholder="' + (ip > 0 ? nf.format(Math.round(ip)) + ' (tu promedio en Control)' : '0') + '"></label>' +
-      '<label class="field"><span>Meta: meses de ingreso</span><input id="mt-meses" type="text" inputmode="numeric" value="' + esc(m.meses) + '"></label>' +
-      '<label class="field"><span>Capital que ya tienes (CLP)</span><input id="mt-cap" type="text" inputmode="numeric" value="' + esc(m.capital ? nf.format(m.capital) : '') + '" placeholder="0"></label>' +
-      '<label class="field"><span>Ahorro mensual (CLP)</span><input id="mt-aho" type="text" inputmode="numeric" value="' + esc(m.ahorro ? nf.format(m.ahorro) : '') + '" placeholder="0"></label>' +
-      '<label class="field wide"><span>Depósito donde lo inviertes</span><select id="mt-plazo">' + opt + '</select></label></div>' +
+      nIn('mt-ing', 'ingreso', 'm', 'Ingreso mensual (CLP)', m.ingreso, ip > 0 ? nf.format(Math.round(ip)) + ' (tu promedio en Control)' : '0') +
+      nIn('mt-gas', 'gasto', 'm', 'Gasto esencial mensual (CLP)', m.gasto, gp > 0 ? nf.format(Math.round(gp)) + ' (tu promedio en Control)' : '0') +
+      nIn('mt-meses', 'meses', 'n', 'Meta: meses de gasto', m.meses, '6') +
+      nIn('mt-cap', 'capital', 'm', 'Dinero líquido que tienes (CLP)', m.capital) +
+      nIn('mt-ts', 'tarjSaldo', 'm', 'Deuda en tarjeta (CLP)', m.tarjSaldo) + nIn('mt-tt', 'tarjTasa', 'p', 'Tasa tarjeta (% mensual)', m.tarjTasa) +
+      nIn('mt-ps', 'preSaldo', 'm', 'Saldo de un préstamo actual (CLP)', m.preSaldo) + nIn('mt-pt', 'preTasa', 'p', 'Tasa préstamo (% mensual)', m.preTasa) + nIn('mt-pc', 'preCuota', 'm', 'Cuota mensual del préstamo (CLP)', m.preCuota) +
+      nIn('mt-nm', 'nvMonto', 'm', 'Préstamo nuevo a evaluar (CLP)', m.nvMonto) + nIn('mt-nt', 'nvTasa', 'p', 'Tasa del préstamo nuevo (% mensual)', m.nvTasa) + nIn('mt-nn', 'nvN', 'n', 'Cuotas del préstamo nuevo', m.nvN) +
+      '<label class="field wide"><span>Depósito donde inviertes</span><select id="mt-plazo">' + opt + '</select></label></div>' +
       '<div class="actions"><button class="btn small" type="button" id="mt-ej">Cargar ejemplo hipotético</button></div><div id="mt-res"></div>' +
       '<details class="card" style="margin-top:12px"><summary>Tasas observadas de depósitos a plazo (UF)</summary><div class="tw"><table><thead><tr><th>Plazo</th><th>Real anual</th><th>En el período</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div><p class="sub">' + esc(D.DAP_NOTA) + '</p></details>';
-    metaResultados();
+    metaResultados(); tarjRender();
+  }
+  function metaBase() {
+    var m = S.cfg.meta, ing = m.ingreso || ingresoProm() || 0, gas = m.gasto || gastoProm() || 0;
+    var x = D.DAP_OBSERVADOS.find(function (q) { return q.id === m.plazo; }) || D.DAP_OBSERVADOS[5];
+    return { m: m, ing: ing, gas: gas, x: x, meta: gas * m.meses };
   }
   function metaResultados() {
-    var m = S.cfg.meta, r = $('mt-res'); if (!r) return;
-    var ing = m.ingreso || ingresoProm() || 0, x = D.DAP_OBSERVADOS.find(function (q) { return q.id === m.plazo; }) || D.DAP_OBSERVADOS[5];
-    if (!(ing > 0) || !(m.ahorro > 0)) { r.innerHTML = '<p class="sub">Escribe tu ingreso mensual y cuánto puedes ahorrar al mes para ver los tres escenarios (o carga el ejemplo hipotético).</p>'; return; }
-    var res = ESC.map(function (e) { return { n: e[0], uf: e[1], fa: e[2], r: F.metaAhorro({ ingreso: ing, meses: m.meses, capital: m.capital || 0, ahorro: m.ahorro * e[2], real: x.real, varUF: e[1], horizonte: 36 }) }; });
-    var cel = function (q) { return q.r.mesMeta === null ? 'más de 36 meses' : (q.r.mesMeta === 0 ? 'ya la tienes' : q.r.mesMeta + ' meses'); };
-    var base = res[1], ok = base.r.mesMeta !== null && base.r.mesMeta <= 12;
-    var meta = res[0].r.meta;
-    r.innerHTML = '<div class="veredicto ' + (ok ? 'ok' : 'bad') + '">' + (base.r.mesMeta === null ? 'Con ese ahorro no alcanzas la meta de ' + money(meta) + ' en 36 meses.' : (ok ? 'Sí aplica: ' : 'Aplica, pero lento: ') + 'llegas a ' + money(meta) + ' en ' + cel(base) + ' (escenario base).') + '</div>' +
-      '<div class="tw"><table><thead><tr><th>Escenario</th><th>UF supuesta</th><th>Ahorro/mes</th><th>Tasa efectiva anual</th><th>Tiempo para la meta</th><th>Saldo a 12 meses</th><th>Intereses 12 m</th></tr></thead><tbody>' +
-      res.map(function (q) { return '<tr><td>' + q.n + '</td><td>' + q.uf + '%</td><td>' + money(m.ahorro * q.fa) + '</td><td>' + num(q.r.anualEf * 100, 1) + '%</td><td><b>' + cel(q) + '</b></td><td>' + money(q.r.saldo12) + '</td><td>' + money(q.r.intereses12) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
-      '<p class="sub">Cálculo: tasa real ' + num(x.real, 2) + '% anual sobre UF (' + x.plazo + ' días) más la variación de UF supuesta; reinversión mensual, sin impuestos. <b>Estos depósitos no se pueden retirar antes del vencimiento</b>: para tener liquidez conviene repartir en plazos (por ejemplo 91, 182 y 360 días) y mantener un fondo en caja para imprevistos. El ahorro mensual debe salir de tu flujo real (míralo en Control). No es asesoría financiera.</p>';
+    var r = $('mt-res'); if (!r) return;
+    var B = metaBase(), m = B.m;
+    if (!(B.ing > 0) || !(B.gas > 0)) { r.innerHTML = '<p class="sub">Escribe tu ingreso mensual y tu gasto esencial mensual para ver las estrategias (o carga el ejemplo hipotético).</p>'; return; }
+    var deudas = (m.tarjSaldo || 0) + (m.preSaldo || 0), neto0 = (m.capital || 0) - deudas, cob = B.gas > 0 ? neto0 / B.gas : 0;
+    var avance = Math.max(0, Math.min(100, neto0 / B.meta * 100));
+    var head = '<div class="small" style="margin-top:12px">Meta: <b>' + money(B.meta) + '</b> (' + m.meses + ' meses × ' + money(B.gas) + ') · Capital hoy: <b>' + money(neto0) + '</b> (' + money(m.capital || 0) + ' líquido − ' + money(deudas) + ' deudas) · cubres <b>' + num(cob, 1) + ' meses</b> de gasto · flujo libre mensual: <b>' + money(B.ing - B.gas) + '</b></div>' +
+      '<div class="barra"><span style="width:' + avance + '%"></span></div>';
+    var cell = function (q) { return q.mesMeta === null ? 'más de 36 meses' : (q.mesMeta === 0 ? 'ya la tienes' : q.mesMeta + ' meses'); };
+    var res = {}, filas = '';
+    ESTRAT.forEach(function (e) {
+      ESCEN.forEach(function (s, k) {
+        var q = F.simularCapital({ ingreso: B.ing * (1 + s[1]), gasto: B.gas * (1 + s[2]), capital: m.capital || 0, meta: B.meta, tm: F.tasaMensualDeposito({ tipo: 'uf', tasa: B.x.real, varUF: s[3] }),
+          tarjeta: { saldo: m.tarjSaldo || 0, iM: (m.tarjTasa || 0) / 100 }, prestamo: { saldo: m.preSaldo || 0, iM: (m.preTasa || 0) / 100, cuota: m.preCuota || 0 },
+          nuevo: { monto: m.nvMonto || 0, iM: (m.nvTasa || 0) / 100, n: m.nvN || 12 }, estrategia: e[0], horizonte: 36 });
+        res[e[0] + k] = q;
+        filas += '<tr' + (k === 0 ? ' class="grp"' : '') + '><td>' + (k === 0 ? '<b>' + e[1] + '</b>' : '') + '</td><td>' + s[0] + '</td><td><b>' + cell(q) + '</b></td><td>' + money(q.doce.neto) + '</td><td>' + money(q.doce.intInv) + '</td><td>' + money(q.doce.intDeu) + '</td></tr>';
+      });
+    });
+    var mejor = ESTRAT.map(function (e) { return { e: e, q: res[e[0] + '1'] }; }).sort(function (a, b) { var x = a.q.mesMeta === null ? 99 : a.q.mesMeta, y = b.q.mesMeta === null ? 99 : b.q.mesMeta; return x - y || b.q.doce.neto - a.q.doce.neto; })[0];
+    var ver = (B.ing - B.gas <= 0) ? '<div class="veredicto bad">Tu flujo libre es cero o negativo: ninguna estrategia de inversión alcanza la meta. Primero hay que reducir gasto o subir ingreso.</div>' :
+      '<div class="veredicto ' + (mejor.q.mesMeta !== null && mejor.q.mesMeta <= 12 ? 'ok' : 'bad') + '">En el escenario realista, la estrategia más rápida es «' + esc(mejor.e[1]) + '»: ' + (mejor.q.mesMeta === null ? 'no llegas a la meta en 36 meses.' : (mejor.q.mesMeta === 0 ? 'ya tienes la meta.' : 'llegas en ' + mejor.q.mesMeta + ' meses.')) + '</div>';
+    r.innerHTML = head + ver +
+      '<div class="tw"><table><thead><tr><th>Estrategia</th><th>Escenario</th><th>Tiempo para la meta</th><th>Capital a 12 meses</th><th>Intereses ganados 12 m</th><th>Intereses pagados 12 m</th></tr></thead><tbody>' + filas + '</tbody></table></div>' +
+      '<p class="sub"><b>Escenarios:</b> pesimista = ingreso −15%, gasto +10%, UF 3% · realista = tus cifras, UF 4% · optimista = ingreso +10%, gasto −5%, UF 5%. Depósito: ' + B.x.plazo + ' días a ' + num(B.x.real, 2) + '% real sobre UF, con reinversión. Tarjeta: se paga el mínimo (intereses + 1% del saldo). Sin impuestos. Si el flujo es negativo y no hay dinero, la tarjeta financia la diferencia. <b>Los depósitos de la captura no se pueden retirar antes del vencimiento</b>: mantén caja para imprevistos. No es asesoría financiera.</p>';
+  }
+  function tarjRender() {
+    var el = $('tarj'), t = S.cfg.tarj || (S.cfg.tarj = {});
+    if (!(t.dias > 0)) t.dias = 25;
+    el.innerHTML = '<h3>Tarjeta de crédito: pagar total, cuota fija o mínimo</h3>' +
+      '<p class="sub">Compara cuánto cuesta dejar la deuda de tarjeta (la del recuadro de arriba) y cuánto rinde pagar la tarjeta recién el día de vencimiento.</p>' +
+      '<div class="form" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">' +
+      nIn('tj-fijo', 'pagoFijo', 'm', 'Cuota fija que podrías pagar (CLP/mes)', t.pagoFijo) +
+      nIn('tj-gasto', 'gastoTarj', 'm', 'Gasto mensual que pasas por la tarjeta (CLP)', t.gastoTarj) +
+      nIn('tj-dias', 'dias', 'n', 'Días entre la compra y el pago', t.dias, '25') + '</div><div id="tj-res"></div>';
+    tarjResultados();
+  }
+  function tarjResultados() {
+    var r = $('tj-res'); if (!r) return;
+    var m = S.cfg.meta, t = S.cfg.tarj, B = metaBase(), iM = (m.tarjTasa || 0) / 100, tm = F.tasaMensualDeposito({ tipo: 'uf', tasa: B.x.real, varUF: 4 }), out = '';
+    if (m.tarjSaldo > 0 && iM > 0) {
+      var P = F.tarjetaPlanes(m.tarjSaldo, iM, t.pagoFijo || 0);
+      var dur = function (q) { return !q || q.meses === null ? '<td colspan="2">La cuota no cubre los intereses</td>' : '<td>' + (q.interminable ? 'más de 50 años' : q.meses + ' meses') + '</td><td>' + money(q.intereses) + '</td>'; };
+      out += '<div class="tw"><table><thead><tr><th>Cómo pagas ' + money(m.tarjSaldo) + ' al ' + pct(m.tarjTasa) + '% mensual</th><th>Tiempo</th><th>Intereses totales</th></tr></thead><tbody>' +
+        '<tr><td>Pagar todo al vencimiento</td><td>1 mes</td><td>' + money(0) + '</td></tr>' +
+        (t.pagoFijo > 0 ? '<tr><td>Cuota fija de ' + money(t.pagoFijo) + '</td>' + dur(P.fijo) + '</tr>' : '') +
+        '<tr><td>Solo el mínimo (intereses + 1% del saldo)</td>' + dur(P.minimo) + '</tr></tbody></table></div>';
+    } else out += '<p class="sub">Para ver el costo de dejar deuda en la tarjeta, escribe arriba el saldo y la tasa mensual.</p>';
+    if (t.gastoTarj > 0) {
+      var v = F.ventajaPlazo(t.gastoTarj, t.dias, tm);
+      out += '<div class="veredicto ok">Pasar ' + money(t.gastoTarj) + ' al mes por la tarjeta y pagarla en ' + t.dias + ' días deja ' + money(v) + ' al mes (' + money(v * 12) + ' al año) si ese dinero queda invertido mientras tanto, y solo si pagas el total cada mes.</div>' +
+        '<p class="sub">Se supone el depósito elegido arriba con UF 4%. Si dejas saldo sin pagar, los intereses de la tarjeta anulan esa ventaja.</p>';
+    }
+    r.innerHTML = out;
   }
 
   function decResultados() {
@@ -781,16 +843,23 @@
       if (t.id === 'dec-n') cd.N = Math.max(0, F.parseMonto(t.value) || 0); else if (t.id === 'dec-x') cd.X = Math.max(0, F.parseMonto(t.value) || 0); else if (t.id === 'dec-nc') cd.nc = Math.max(0, F.parseMonto(t.value) || 0); else return;
       guardar(); decResultados();
     });
-    $('meta').addEventListener('input', function (e) {
-      var t = e.target, m = S.cfg.meta;
-      if (t.id === 'mt-ing') m.ingreso = Math.max(0, F.parseMonto(t.value) || 0); else if (t.id === 'mt-meses') m.meses = Math.max(1, F.parseMonto(t.value) || 6); else if (t.id === 'mt-cap') m.capital = Math.max(0, F.parseMonto(t.value) || 0); else if (t.id === 'mt-aho') m.ahorro = Math.max(0, F.parseMonto(t.value) || 0); else return;
-      guardar(); metaResultados();
-    });
-    $('meta').addEventListener('change', function (e) { if (e.target.id !== 'mt-plazo') return; S.cfg.meta.plazo = e.target.value; guardar(); metaResultados(); });
+    var cap = function (e) {
+      var t = e.target, k = t.dataset && t.dataset.k; if (!k) return;
+      var v = t.dataset.t === 'm' ? (F.parseMonto(t.value) || 0) : (Number(String(t.value).replace(',', '.')) || 0);
+      if (t.dataset.t === 'n') v = Math.round(v);
+      if (t.closest('#tarj')) S.cfg.tarj[k] = Math.max(0, v); else S.cfg.meta[k] = Math.max(0, v);
+      guardar(); metaResultados(); tarjResultados();
+    };
+    $('meta').addEventListener('input', cap); $('tarj').addEventListener('input', cap);
+    $('meta').addEventListener('change', function (e) { if (e.target.id !== 'mt-plazo') return; S.cfg.meta.plazo = e.target.value; guardar(); metaResultados(); tarjResultados(); });
     $('meta').addEventListener('click', function (e) {
-      if (e.target.id === 'mt-ej') { S.cfg.meta = { ingreso: 1000000, meses: 6, capital: 1000000, ahorro: 250000, plazo: S.cfg.meta.plazo || 'ccb-360' }; guardar(); renderMeta(); return; }
+      if (e.target.id === 'mt-ej') {
+        S.cfg.meta = { ingreso: 1000000, gasto: 700000, meses: 6, capital: 500000, tarjSaldo: 300000, tarjTasa: 2.5, preSaldo: 0, preTasa: 0, preCuota: 0, nvMonto: 1000000, nvTasa: 2, nvN: 12, plazo: S.cfg.meta.plazo || 'ccb-360' };
+        S.cfg.tarj = { pagoFijo: 60000, gastoTarj: 400000, dias: 25 }; guardar(); renderMeta(); return;
+      }
       var b = e.target.closest('button[data-usar-dap]'); if (!b) return;
       var x = D.DAP_OBSERVADOS[+b.dataset.usarDap], d0 = new Date(hoy() + 'T12:00:00'); d0.setDate(d0.getDate() + x.plazo);
+      mostrar('financiamiento');
       $('dap-det').open = true; $('d-inst').value = x.inst; $('d-tipo').value = 'uf'; $('d-tipo').dispatchEvent(new Event('change'));
       $('d-tasa').value = num(x.real, 2); $('d-f0').value = hoy(); $('d-fv').value = d0.toISOString().slice(0, 10); $('d-retiro').value = 'pierde-intereses';
       $('d-msg').textContent = 'Completa el monto y la variación de UF que supones. Este depósito no es anticipable: queda marcado como «pierde intereses» al retirar antes.';

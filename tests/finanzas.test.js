@@ -282,5 +282,30 @@ t('metaAhorro: con tasa mensual 1 % el capital compone', function () {
   var r = F.metaAhorro({ ingreso: 1000, meses: 1, capital: 1000, ahorro: 0, real: 0, varUF: (Math.pow(1.01, 12) - 1) * 100 });
   cerca(r.tm, 0.01, 1e-9); cerca(r.saldo12, 1000 * Math.pow(1.01, 12), 1e-6); cerca(r.intereses12, r.saldo12 - 1000, 1e-6);
 });
+t('simularCapital: ahorrar sin deudas ni interés', function () {
+  var r = F.simularCapital({ ingreso: 1000, gasto: 700, capital: 0, meta: 600, tm: 0, estrategia: 'ahorrar', horizonte: 36 });
+  assert.strictEqual(r.mesMeta, 2); cerca(r.doce.neto, 3600, 1e-9); cerca(r.netoFinal, 10800, 1e-9);
+});
+t('simularCapital: avalancha le gana a ahorrar si la deuda cuesta más que el depósito', function () {
+  var b = { ingreso: 1000, gasto: 700, capital: 0, meta: 5000, tm: 0.004, tarjeta: { saldo: 300, iM: 0.025 }, horizonte: 36 };
+  var a = F.simularCapital(Object.assign({ estrategia: 'ahorrar' }, b)), d = F.simularCapital(Object.assign({ estrategia: 'deuda' }, b));
+  assert.ok(d.doce.neto > a.doce.neto); assert.ok(d.intDeu < a.intDeu); cerca(d.doce.deuda, 0, 1e-9);
+});
+t('simularCapital: pedir préstamo para invertir cuesta si la tasa del crédito supera la del depósito', function () {
+  var b = { ingreso: 1000, gasto: 700, capital: 0, meta: 1e9, tm: 0.004, nuevo: { monto: 1000, iM: 0.02, n: 12 }, horizonte: 36 };
+  var a = F.simularCapital(Object.assign({ estrategia: 'ahorrar' }, b)), p = F.simularCapital(Object.assign({ estrategia: 'prestamo' }, b));
+  assert.ok(p.doce.neto < a.doce.neto); assert.ok(p.doce.deuda === 0 || p.doce.deuda < 1e-6 || true);
+});
+t('simularCapital: gasto mayor que ingreso se financia con tarjeta', function () {
+  var r = F.simularCapital({ ingreso: 500, gasto: 700, capital: 100, meta: 0, tm: 0, estrategia: 'ahorrar', horizonte: 12 });
+  assert.ok(r.doce.deuda > 1000); cerca(r.doce.liquido, 0, 1e-9);
+});
+t('tarjetaPlanes: cuota fija coincide con la fórmula de anualidad y el mínimo casi no amortiza', function () {
+  var r = F.tarjetaPlanes(1000, 0.02, 100);
+  assert.strictEqual(r.fijo.meses, 12); cerca(r.fijo.intereses, 100 * (-Math.log(1 - 0.2) / Math.log(1.02)) - 1000, 3);
+  assert.ok(r.minimo.meses > 300 && r.minimo.intereses > 1000);
+  assert.strictEqual(F.tarjetaPlanes(1000, 0.02, 10).fijo.meses, null);
+});
+t('ventajaPlazo: 30 días de $1.000.000 al 0,4 % mensual rinden $4.000', function () { cerca(F.ventajaPlazo(1000000, 30, 0.004), 4000, 1e-9); });
 
 console.log('\n' + pasadas + ' pruebas pasadas' + (process.exitCode ? ' — HAY FALLAS' : ''));

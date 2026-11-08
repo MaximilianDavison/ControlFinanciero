@@ -321,6 +321,62 @@
     }
     return { meta: meta, tm: tm, anualEf: anualDesdeMensual(tm), mesMeta: mesMeta, saldo12: s12, intereses12: i12, saldoH: saldo, interesesH: intereses, horizonte: h };
   }
+
+  /* Capital neto = dinero líquido − deudas. Simula mes a mes tres estrategias:
+     'ahorrar'  : el flujo libre (ingreso − gasto) va al depósito; las deudas pagan solo su mínimo.
+     'deuda'    : el flujo libre paga primero la deuda de mayor tasa (avalancha) y luego se ahorra.
+     'prestamo' : pides un préstamo nuevo, lo inviertes y ahorras el flujo libre.
+     Mínimo de tarjeta = intereses del mes + 1 % del saldo. Si falta plata (flujo negativo sin capital), la tarjeta la financia. */
+  function simularCapital(p) {
+    var H = p.horizonte || 36, cap = p.capital || 0, tm = p.tm || 0, meta = p.meta || 0;
+    var d = { card: { s: (p.tarjeta && p.tarjeta.saldo) || 0, i: (p.tarjeta && p.tarjeta.iM) || 0 },
+              loan: { s: (p.prestamo && p.prestamo.saldo) || 0, i: (p.prestamo && p.prestamo.iM) || 0 },
+              nuevo: { s: 0, i: 0 } };
+    var cuota = (p.prestamo && p.prestamo.cuota) || 0, nuevaCuota = 0, nRest = 0;
+    if (p.estrategia === 'prestamo' && p.nuevo && p.nuevo.monto > 0) {
+      cap += p.nuevo.monto; d.nuevo.s = p.nuevo.monto; d.nuevo.i = p.nuevo.iM; nuevaCuota = cuotaFrancesa(p.nuevo.monto, p.nuevo.iM, p.nuevo.n); nRest = p.nuevo.n;
+    }
+    var neto = function () { return cap - d.card.s - d.loan.s - d.nuevo.s; };
+    var mesMeta = neto() >= meta ? 0 : null, intInv = 0, intDeu = 0, r12 = null;
+    for (var m = 1; m <= H; m++) {
+      var g = cap * tm; cap += g; intInv += g;
+      var ci = d.card.s * d.card.i; d.card.s += ci; intDeu += ci;
+      var li = d.loan.s * d.loan.i; d.loan.s += li; intDeu += li;
+      var ni = d.nuevo.s * d.nuevo.i; d.nuevo.s += ni; intDeu += ni;
+      var flujo = p.ingreso - p.gasto, x;
+      x = Math.min(cuota, d.loan.s); d.loan.s -= x; flujo -= x;
+      if (nRest > 0) {
+        x = Math.min(nuevaCuota, d.nuevo.s); d.nuevo.s -= x; flujo -= x; nRest--;
+        if (nRest === 0 && d.nuevo.s > 0) { flujo -= d.nuevo.s; d.nuevo.s = 0; }
+      }
+      x = Math.min(d.card.s, ci + 0.01 * d.card.s); d.card.s -= x; flujo -= x;
+      if (p.estrategia === 'deuda' && flujo > 0) {
+        [d.card, d.loan].sort(function (a, b) { return b.i - a.i; }).forEach(function (q) { var y = Math.min(flujo, q.s); q.s -= y; flujo -= y; });
+      }
+      cap += flujo;
+      if (cap < 0) { d.card.s += -cap; cap = 0; }
+      if (mesMeta === null && neto() >= meta) mesMeta = m;
+      if (m === 12) r12 = { neto: neto(), liquido: cap, deuda: d.card.s + d.loan.s + d.nuevo.s, intInv: intInv, intDeu: intDeu };
+    }
+    return { meta: meta, mesMeta: mesMeta, doce: r12, netoFinal: neto(), horizonte: H, intInv: intInv, intDeu: intDeu };
+  }
+  /* Tarjeta: cuánto cuesta dejar un saldo pagando solo el mínimo (intereses + 1 %) o una cuota fija. */
+  function tarjetaPlanes(saldo, iM, pagoFijo) {
+    var correr = function (pago) {
+      var s = saldo, tot = 0, m = 0;
+      while (s > 1 && m < 600) {
+        var ci = s * iM; s += ci; tot += ci; var x = Math.min(s, pago(s, ci)); if (x <= ci && !(x >= s)) return { meses: null, intereses: null };
+        s -= x; m++;
+      }
+      return { meses: m, intereses: tot, interminable: s > 1 };
+    };
+    return {
+      minimo: correr(function (s, ci) { return ci + 0.01 * s; }),
+      fijo: pagoFijo > 0 ? correr(function () { return pagoFijo; }) : null
+    };
+  }
+  /* Pagar la tarjeta el día de vencimiento financia la compra sin costo: si el dinero sigue invertido esos días, rinde. */
+  function ventajaPlazo(gastoMensual, dias, tm) { return gastoMensual * tm * dias / 30; }
   function estadoDeposito(d, hoy) {
     var total = dias(d.f0, d.fv), trans = Math.min(Math.max(dias(d.f0, hoy), 0), total), rest = dias(hoy, d.fv), tm = tasaMensualDeposito(d);
     return { total: total, trans: trans, restantes: rest, vencido: rest <= 0, noIniciado: hoy < d.f0, tm: tm, anualEf: anualDesdeMensual(tm),
@@ -380,7 +436,7 @@
     cuotaFrancesa: cuotaFrancesa, tasaImplicita: tasaImplicita, anualDesdeMensual: anualDesdeMensual, mensualDesdeAnual: mensualDesdeAnual,
     anualizadoPagoUnico: anualizadoPagoUnico, saldoPendiente: saldoPendiente, evaluarOferta: evaluarOferta,
     evEfectiva: evEfectiva, signo: signo, totales: totales, porMes: porMes, topDescripciones: topDescripciones,
-    respaldoPorTipo: respaldoPorTipo, indiceRespaldo: indiceRespaldo, cajaAcumulada: cajaAcumulada, ingresosPromedio: ingresosPromedio, metaAhorro: metaAhorro,
+    respaldoPorTipo: respaldoPorTipo, indiceRespaldo: indiceRespaldo, cajaAcumulada: cajaAcumulada, ingresosPromedio: ingresosPromedio, metaAhorro: metaAhorro, simularCapital: simularCapital, tarjetaPlanes: tarjetaPlanes, ventajaPlazo: ventajaPlazo,
     normalizarTipo: normalizarTipo, validarMov: validarMov, importarTexto: importarTexto,
     dias: dias, tasaMensualDeposito: tasaMensualDeposito, interesDeposito: interesDeposito, estadoDeposito: estadoDeposito, rescateHoy: rescateHoy,
     saldoCredito: saldoCredito, simularCredito: simularCredito, costoDiario: costoDiario, pagarHoy: pagarHoy, extenderVsPrepagar: extenderVsPrepagar,
