@@ -92,41 +92,68 @@
 
   <!-- ===================== 2 · FINANCIAMIENTO ===================== -->
   <section id="p-financiamiento" class="panel" role="tabpanel" aria-labelledby="tab-financiamiento" hidden>
-    <div class="panel-head"><div><h2>Financiamiento y deuda</h2>
-      <p class="sub">Compara cuánto cuesta cada fuente de dinero con la misma vara: la tasa efectiva anual que implican las cuotas. Las tasas no se escriben por ti: salen de la oferta o del contrato que tú ingresas.</p></div></div>
+    <div class="panel-head"><div><h2>Financiamiento e inversión</h2>
+      <p class="sub">¿Te conviene dejar tu plata invertida o pagar un crédito? Registra tus depósitos a plazo y tus créditos y compáralos con tus propios números. Las tasas las pones tú: salen de tu contrato o de la oferta.</p></div></div>
 
-    <div class="card" id="fin-carga"></div>
+    <div class="card" id="dec"></div>
+
+    <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+      <div class="card" id="dap-card">
+        <h3>Mis inversiones · depósitos a plazo</h3>
+        <div id="dap-lista"></div>
+        <details id="dap-det"><summary>Agregar un depósito a plazo</summary>
+          <form id="f-dap" class="form" novalidate>
+            <label class="field"><span>Institución</span><input id="d-inst" list="dl-inst" type="text" maxlength="60" autocomplete="off" required></label>
+            <label class="field"><span>Tipo</span><select id="d-tipo"><option value="pesos">En pesos</option><option value="uf">Reajustable en UF</option></select></label>
+            <label class="field"><span>Monto invertido (CLP)</span><input id="d-monto" type="text" inputmode="numeric" autocomplete="off" required></label>
+            <label class="field"><span id="d-tasa-l">Tasa (%)</span><input id="d-tasa" type="text" inputmode="decimal" autocomplete="off" required></label>
+            <label class="field" id="d-per-w"><span>La tasa es</span><select id="d-per"><option value="mensual">Mensual</option><option value="anual">Anual</option></select></label>
+            <label class="field" id="d-uf-w" hidden><span>Variación anual de la UF que supones (%)</span><input id="d-uf" type="text" inputmode="decimal" autocomplete="off"></label>
+            <label class="field"><span>Fecha de inicio</span><input id="d-f0" type="date" required></label>
+            <label class="field"><span>Vencimiento</span><input id="d-fv" type="date" required></label>
+            <label class="field"><span>Si lo retiras antes</span><select id="d-retiro"><option value="sin-costo">Cobro capital + intereses ganados</option><option value="pierde-intereses">Pierdo los intereses</option></select></label>
+            <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Agregar depósito</button><span class="msg" id="d-msg" role="status" aria-live="polite"></span></div>
+          </form>
+          <p class="sub small" style="margin-top:10px">Supuestos: interés simple, prorrateado por días sobre la tasa mensual equivalente; sin impuestos. En UF el resultado es una <b>proyección</b> con la variación de UF que tú supones (el Banco Central publica la UF).</p>
+        </details>
+      </div>
+      <div class="card" id="cred-card">
+        <h3>Mis créditos</h3>
+        <div id="cred-lista"></div>
+        <div id="fin-carga"></div>
+        <details id="cred-det"><summary>Agregar un crédito o una oferta</summary>
+          <form id="f-of" class="form" novalidate>
+            <label class="field"><span>Institución</span><input id="o-inst" list="dl-inst" type="text" maxlength="60" autocomplete="off" required><datalist id="dl-inst"></datalist></label>
+            <label class="field"><span>Producto</span><input id="o-prod" type="text" maxlength="60" placeholder="Crédito de consumo, avance…" required></label>
+            <label class="field"><span>Estado</span><select id="o-estado"><option>Cotización</option><option>Contratado</option></select></label>
+            <label class="field"><span>Fecha</span><input id="o-fecha" type="date"></label>
+            <label class="field"><span>Capital recibido (CLP)</span><input id="o-capital" type="text" inputmode="numeric" autocomplete="off" required></label>
+            <label class="field"><span>Forma de pago</span><select id="o-tipo"><option value="cuotas">Cuotas mensuales iguales</option><option value="pago-unico">Un solo pago</option></select></label>
+            <label class="field"><span>Plazo</span><input id="o-plazo" type="text" inputmode="numeric" autocomplete="off" required></label>
+            <label class="field"><span>Unidad</span><select id="o-unidad"><option value="meses">meses</option><option value="dias">días</option></select></label>
+            <label class="field"><span id="o-pago-l">Cuota mensual total (CLP)</span><input id="o-pago" type="text" inputmode="numeric" autocomplete="off" required></label>
+            <label class="field"><span>Tasa informada % (opcional)</span><input id="o-tasa" type="text" inputmode="decimal" autocomplete="off"></label>
+            <label class="field"><span>Esa tasa es</span><select id="o-tasaper"><option value="">No lo sé</option><option value="mensual">Mensual</option><option value="anual">Anual</option></select></label>
+            <label class="field"><span>CAE informada % (opcional)</span><input id="o-cae" type="text" inputmode="decimal" autocomplete="off"></label>
+            <label class="field" id="o-pag-w" hidden><span>Cuotas ya pagadas</span><input id="o-pagadas" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+            <label class="field" id="o-pre-w" hidden><span>Costo por prepagar (CLP, opcional)</span><input id="o-prepago" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+            <label class="field wide"><span>Nota (opcional)</span><input id="o-nota" type="text" maxlength="200" placeholder="Ej.: incluye seguro de desgravamen"></label>
+            <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Agregar</button><span class="msg" id="o-msg" role="status" aria-live="polite"></span></div>
+          </form>
+          <p class="sub small" style="margin-top:10px">Usa la cuota <b>total</b> que pagas cada mes (con seguros y comisiones) y el capital que realmente recibiste. Así la tasa implícita refleja el costo real.</p>
+        </details>
+      </div>
+    </div>
 
     <div class="card">
-      <div class="panel-head" style="margin-bottom:12px"><h3 style="margin:0">Comparador de ofertas</h3>
+      <div class="panel-head" style="margin-bottom:12px"><div><h3 style="margin:0">Comparar ofertas de crédito</h3><p class="sub small">Tenpo, MACH y Mercado Pago salen de tus capturas del 08-11-2026; las demás las agregas tú.</p></div>
         <label class="field"><span>Ordenar por</span><select id="f-orden"><option value="anual">Tasa efectiva anual (menor primero)</option><option value="inst">Institución</option><option value="extra">Costo adicional %</option><option value="pago">Pago (menor primero)</option></select></label></div>
-      <div class="tw cmp stack"><table><thead><tr><th>Institución y producto</th><th class="n">Capital</th><th>Condiciones</th><th class="n">Total a devolver</th><th class="n">Mensual implícita</th><th class="n">Anual efectiva implícita</th><th>Informado</th><th class="n">Pago / ingreso</th><th></th></tr></thead><tbody id="f-tabla"></tbody></table></div>
-      <p class="sub small" style="margin-top:10px">La <b>tasa implícita</b> es la que iguala lo que recibes con el valor presente de lo que pagas: incluye todo lo que esté dentro de la cuota (intereses, seguros, comisiones). La <b>CAE</b> oficial incluye intereses, gastos y seguros expresados en forma anual y debe figurar en el contrato. Si ambas difieren mucho, pide el detalle antes de aceptar. * En pagos únicos de pocos días, la tasa anual es una extrapolación para poder comparar; no es la CAE.</p>
+      <div class="tw cmp stack"><table><thead><tr><th>Oferta</th><th>Condiciones</th><th class="n">Total a devolver</th><th class="n">Tasa efectiva anual</th><th>Detalle</th></tr></thead><tbody id="f-tabla"></tbody></table></div>
+      <p class="sub small" style="margin-top:10px">La <b>tasa efectiva anual</b> sale de las cuotas: iguala lo que recibes con lo que pagas, así que incluye cualquier cargo que esté dentro de la cuota. La <b>CAE</b> oficial incluye intereses, gastos y seguros en forma anual y debe figurar en el contrato; si difiere mucho, pide el detalle. * En pagos únicos de pocos días es una extrapolación para comparar, no la CAE.</p>
     </div>
 
-    <div class="card">
-      <h3>Agregar una oferta o un crédito</h3>
-      <form id="f-of" class="form" novalidate>
-        <label class="field"><span>Institución</span><input id="o-inst" list="dl-inst" type="text" maxlength="60" autocomplete="off" required><datalist id="dl-inst"></datalist></label>
-        <label class="field"><span>Producto</span><input id="o-prod" type="text" maxlength="60" placeholder="Crédito de consumo, avance…" required></label>
-        <label class="field"><span>Estado</span><select id="o-estado"><option>Cotización</option><option>Contratado</option></select></label>
-        <label class="field"><span>Fecha</span><input id="o-fecha" type="date"></label>
-        <label class="field"><span>Capital recibido (CLP)</span><input id="o-capital" type="text" inputmode="numeric" autocomplete="off" required></label>
-        <label class="field"><span>Forma de pago</span><select id="o-tipo"><option value="cuotas">Cuotas mensuales iguales</option><option value="pago-unico">Un solo pago</option></select></label>
-        <label class="field"><span>Plazo</span><input id="o-plazo" type="text" inputmode="numeric" autocomplete="off" required></label>
-        <label class="field"><span>Unidad</span><select id="o-unidad"><option value="meses">meses</option><option value="dias">días</option></select></label>
-        <label class="field"><span id="o-pago-l">Cuota mensual total (CLP)</span><input id="o-pago" type="text" inputmode="numeric" autocomplete="off" required></label>
-        <label class="field"><span>Tasa informada % (opcional)</span><input id="o-tasa" type="text" inputmode="decimal" autocomplete="off"></label>
-        <label class="field"><span>Esa tasa es</span><select id="o-tasaper"><option value="">No lo sé</option><option value="mensual">Mensual</option><option value="anual">Anual</option></select></label>
-        <label class="field"><span>CAE informada % (opcional)</span><input id="o-cae" type="text" inputmode="decimal" autocomplete="off"></label>
-        <label class="field wide"><span>Nota (opcional)</span><input id="o-nota" type="text" maxlength="200" placeholder="Ej.: incluye seguro de desgravamen"></label>
-        <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Agregar al comparador</button><span class="msg" id="o-msg" role="status" aria-live="polite"></span></div>
-      </form>
-      <p class="sub small" style="margin-top:10px">Usa la cuota <b>total</b> que pagarías cada mes (con seguros y comisiones) y el capital que realmente recibes. Así la tasa implícita refleja el costo real.</p>
-    </div>
-
-    <div class="card">
-      <h3>Tarjetas y líneas con cupo</h3>
+    <details class="card">
+      <summary>Tarjetas y líneas con cupo</summary>
       <div id="cupos-lista" class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"></div>
       <details style="margin-top:14px"><summary>Agregar una tarjeta o línea</summary>
         <form id="f-cupo" class="form" novalidate>
@@ -139,20 +166,20 @@
           <div class="actions" style="grid-column:1/-1"><button class="btn primary" type="submit">Agregar</button><span class="msg" id="q-msg" role="status" aria-live="polite"></span></div>
         </form>
       </details>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>Antes de aceptar un crédito</h3>
-      <ul class="sub" style="margin:0 0 12px;padding-left:20px;display:grid;gap:6px">
+    <details class="card">
+      <summary>Antes de aceptar un crédito</summary>
+      <ul class="sub" style="margin:8px 0 12px;padding-left:20px;display:grid;gap:6px">
         <li>Pide el <b>costo total del crédito (CTC)</b> —lo que terminarás pagando— y la <b>CAE</b>; deben informarse en la publicidad y en el contrato.</li>
         <li>Compara con la misma vara: capital recibido, plazo, y cuota total con seguros e impuestos.</li>
         <li>No confundas «sobrecosto sobre el capital» con tasa mensual ni con CAE.</li>
         <li>Un cupo disponible no es ingreso, y el pago de una tarjeta no es un gasto nuevo si el consumo ya está registrado.</li>
       </ul>
       <div class="form" style="align-items:end"><label class="field"><span>Tasa máxima convencional vigente (% anual, opcional)</span><input id="f-tmc" type="text" inputmode="decimal" autocomplete="off" placeholder="Cópiala desde la CMF"></label>
-        <p class="sub small" style="grid-column:span 2">Es la tasa más alta que permite la ley y la publica la CMF cada mes; depende del tipo y monto de la operación. Si la ingresas, la tabla avisa cuando la tasa implícita la supera (la implícita incluye todos los cargos, así que es una señal para revisar, no una conclusión legal).
+        <p class="sub small" style="grid-column:span 2">Es la tasa más alta que permite la ley y la publica la CMF cada mes; depende del tipo y monto de la operación. Si la ingresas, la tabla avisa cuando la tasa implícita la supera (incluye todos los cargos: es una señal para revisar, no una conclusión legal).
           Fuentes: <a href="https://www.cmfchile.cl" target="_blank" rel="noopener noreferrer">CMF</a> · <a href="https://www.sernac.cl" target="_blank" rel="noopener noreferrer">SERNAC</a> (comparador de créditos de consumo).</p></div>
-    </div>
+    </details>
   </section>
 
   <!-- ===================== 3 · BRECHA DE EVIDENCIA ===================== -->

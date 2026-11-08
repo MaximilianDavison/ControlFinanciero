@@ -26,7 +26,7 @@ Página estática (HTML, CSS y JavaScript, sin dependencias ni paso de compilaci
 ## Pruebas
 ```
 node tests/finanzas.test.js   # 24 pruebas del motor: formatos, créditos, evidencia, importación
-node tests/e2e.js             # 72 comprobaciones en un navegador real (requiere Playwright)
+node tests/e2e.js             # 100 comprobaciones en un navegador real (requiere Playwright)
 ```
 Los datos que usan las pruebas son de prueba y viven solo en ellas. La prueba de extremo a extremo verifica cifras contra un cálculo manual, la migración de datos antiguos, la importación con duplicados, el respaldo y la restauración, el escape de HTML, el modo móvil y el modo oscuro.
 

@@ -56,3 +56,13 @@ La página anterior está intacta en `main` (commit `e3f4801`) y sus archivos de
 1. ¿Se pasa la rama a `main` tras revisar la vista previa?
 2. ¿Se sacan del sitio público las fichas con datos de las cuentas?
 3. ¿Se prioriza la carga de cartolas o la sincronización entre dispositivos?
+
+## Adenda: pestaña Financiamiento más simple y depósitos a plazo
+Pedido de Maximilian: simplificar la pestaña y comparar «crédito de consumo vs. mi inversión».
+- **Mis inversiones (depósitos a plazo):** monto, tasa (mensual o anual), pesos o UF, inicio y vencimiento, retiro sin costo o con pérdida de intereses. Todo lo ingresa el usuario; no hay depósitos de ejemplo.
+- **Mis créditos:** crédito «Contratado» con cuotas pagadas → saldo estimado (valor presente de las cuotas restantes).
+- **Cuatro comparaciones:** (1) costo diario de la deuda frente al rendimiento; (2) pagar hoy con el depósito frente a mantenerlo hasta el vencimiento; (3) extender el depósito N días frente a prepagar; (4) crédito nuevo frente a usar la inversión.
+- **Supuestos (declarados en pantalla):** interés simple prorrateado por días; sin impuestos ni comisiones; UF = proyección con la variación anual que el usuario supone; el sobrante tras pagar se reinvierte a la tasa del depósito; no es asesoría financiera.
+- **Comparador de ofertas simplificado:** 5 columnas, alertas cortas y detalle plegado.
+- **Verificación:** 37 pruebas unitarias con cálculos a mano y 100 comprobaciones e2e (las cifras de pantalla se contrastan con el motor), sin desborde en escritorio, móvil ni modo oscuro.
+- Sigue sin estar en `main`; falta auditoría de ChatGPT.

@@ -190,4 +190,87 @@ t('encabezado incompleto se rechaza con un mensaje claro', function () {
   assert.ok(r.errores[0].motivo.indexOf('encabezado') >= 0);
 });
 
+
+console.log('Depósitos a plazo y decisiones (cifras calculadas a mano)');
+var dap = { monto: 1000000, tipo: 'pesos', tasa: 0.4, per: 'mensual', f0: '2026-10-09', fv: '2027-01-07', retiro: 'sin-costo' };
+t('días entre fechas', function () {
+  assert.strictEqual(F.dias('2026-11-08', '2026-12-08'), 30);
+  assert.strictEqual(F.dias('2026-12-31', '2027-01-01'), 1);
+});
+t('tasa mensual equivalente: pesos mensual, pesos anual y UF', function () {
+  cerca(F.tasaMensualDeposito({ tipo: 'pesos', tasa: 0.5, per: 'mensual' }), 0.005, 1e-12);
+  cerca(F.tasaMensualDeposito({ tipo: 'pesos', tasa: (Math.pow(1.005, 12) - 1) * 100, per: 'anual' }), 0.005, 1e-9);
+  // UF: (1 + 2 %) · (1 + 4 %) − 1 = 6,08 % anual → (1,0608)^(1/12) − 1
+  cerca(F.tasaMensualDeposito({ tipo: 'uf', tasa: 2, varUF: 4 }), Math.pow(1.0608, 1 / 12) - 1, 1e-12);
+});
+t('interés simple prorrateado: 1.000.000 al 0,4 % mensual', function () {
+  cerca(F.interesDeposito(dap, 30), 4000, 1e-9);
+  cerca(F.interesDeposito(dap, 60), 8000, 1e-9);
+});
+t('estado del depósito a la fecha', function () {
+  var e = F.estadoDeposito(dap, '2026-11-08');
+  assert.strictEqual(e.total, 90); assert.strictEqual(e.trans, 30); assert.strictEqual(e.restantes, 60);
+  cerca(e.interesHoy, 4000, 1e-9); cerca(e.interesVenc, 12000, 1e-9); assert.ok(!e.vencido && !e.noIniciado);
+  assert.ok(F.estadoDeposito(dap, '2027-02-01').vencido);
+  assert.ok(F.estadoDeposito(dap, '2026-10-01').noIniciado);
+});
+t('rescate hoy: sin costo cobra intereses; «pierde intereses» solo capital', function () {
+  cerca(F.rescateHoy(dap, '2026-11-08'), 1004000, 1e-9);
+  cerca(F.rescateHoy(Object.assign({}, dap, { retiro: 'pierde-intereses' }), '2026-11-08'), 1000000, 1e-9);
+});
+t('simulación del crédito: amortiza hasta cero y los intereses suman cuota×n − capital', function () {
+  var i = 0.02, c = F.cuotaFrancesa(1000000, i, 12), r = F.simularCredito(1000000, i, c, 360);
+  cerca(r.saldoFinal, 0, 1e-6); cerca(r.interes, c * 12 - 1000000, 0.01);
+  cerca(F.simularCredito(1000000, i, c, 180).saldoFinal, F.saldoPendiente(c, i, 6), 0.01);
+});
+t('saldo del crédito: valor presente de las cuotas que faltan', function () {
+  var c = F.saldoCredito({ capital: 1000000, plazo: 12, pago: F.cuotaFrancesa(1000000, 0.02, 12), pagadas: 6 });
+  cerca(c.iM, 0.02, 1e-9); cerca(c.saldo, F.saldoPendiente(F.cuotaFrancesa(1000000, 0.02, 12), 0.02, 6), 1e-6); assert.strictEqual(c.restantes, 6);
+});
+t('1 · costo diario: por cada $100.000, depósito 0,4 % mensual vs crédito 2 % mensual', function () {
+  var r = F.costoDiario(dap, { saldo: 500000, iM: 0.02 });
+  cerca(r.rendPor100k, 100000 * 0.004 / 30, 1e-9);
+  cerca(r.costoPor100k, 100000 * (Math.pow(1.02, 1 / 30) - 1), 1e-9);
+  cerca(r.rendDia, 1000000 * 0.004 / 30, 1e-9); cerca(r.costoDia, 500000 * (Math.pow(1.02, 1 / 30) - 1), 1e-9);
+  assert.ok(r.razon > 4 && r.razon < 5, 'razón ' + r.razon);
+});
+t('2 · pagar hoy: caso calculado a mano (saldo 500.000, 2 %, cuota 50.000, depósito con 60 días por delante)', function () {
+  // mantener: interés del crédito 10.000 + 9.200 = 19.200 ; depósito gana 1.000.000·0,4 %·2 = 8.000 → costo 11.200
+  // pagar:   rescate 1.004.000 → abono 500.000, sobra 504.000 que gana 504.000·0,4 %·2 = 4.032 → costo −4.032
+  var r = F.pagarHoy(dap, { saldo: 500000, iM: 0.02, pago: 50000 }, '2026-11-08', 0);
+  assert.strictEqual(r.H, 60);
+  cerca(r.interesMantener, 19200, 1e-6); cerca(r.gananciaDeposito, 8000, 1e-9);
+  cerca(r.costoMantener, 11200, 1e-6); cerca(r.abono, 500000, 1e-9); cerca(r.sobra, 504000, 1e-9);
+  cerca(r.gananciaSobrante, 4032, 1e-9); cerca(r.costoPagar, -4032, 1e-6); cerca(r.ventajaPagar, 15232, 1e-6);
+  assert.strictEqual(F.pagarHoy(Object.assign({}, dap, { f0: '2026-12-01' }), { saldo: 1, iM: .02, pago: 1 }, '2026-11-08', 0), null);
+});
+t('2 · el costo de prepago reduce la ventaja de pagar', function () {
+  var base = F.pagarHoy(dap, { saldo: 500000, iM: 0.02, pago: 50000 }, '2026-11-08', 0);
+  var con = F.pagarHoy(dap, { saldo: 500000, iM: 0.02, pago: 50000 }, '2026-11-08', 3000);
+  assert.ok(con.ventajaPagar < base.ventajaPagar - 2900);
+});
+t('3 · extender N días o prepagar: caso calculado a mano', function () {
+  // depósito vence hoy: dinero = 1.000.000 + 12.000 ; crédito 400.000 al 2 % ; N = 1 día
+  var d0 = Object.assign({}, dap, { f0: '2026-08-10', fv: '2026-11-08' });
+  var e = F.estadoDeposito(d0, '2026-11-08'); cerca(e.valorVenc, 1000000 + 1000000 * 0.004 * 90 / 30, 1e-6);
+  var r = F.extenderVsPrepagar(d0, { saldo: 400000, iM: 0.02, pago: 50000 }, '2026-11-08', 1, 0);
+  var M = e.valorVenc;
+  cerca(r.extender, M * 0.004 / 30, 1e-6);
+  cerca(r.ahorroIntereses, 400000 * (Math.pow(1.02, 1 / 30) - 1), 1e-6);
+  cerca(r.invierteSobrante, (M - 400000) * 0.004 / 30, 1e-6);
+  cerca(r.ventajaPrepagar, 400000 * ((Math.pow(1.02, 1 / 30) - 1) - 0.004 / 30), 1e-6);
+  assert.ok(r.ventajaPrepagar > 0);
+});
+t('4 · crédito nuevo vs inversión: 1.000.000 a 12 cuotas al 2 % contra depósito al 0,4 %', function () {
+  var r = F.creditoNuevoVsInversion(dap, '2026-11-08', 1000000, 12, 0.02);
+  cerca(r.cuota, 94559.6, 0.1); cerca(r.costoCredito, 94559.6 * 12 - 1000000, 1);
+  cerca(r.costoInversion, 1000000 * 0.004 * 12, 1e-9); cerca(r.diferencia, r.costoCredito - 48000, 1e-6);
+  assert.strictEqual(r.alcanza, true);
+  assert.strictEqual(F.creditoNuevoVsInversion(dap, '2026-11-08', 5000000, 12, 0.02).alcanza, false);
+});
+t('alertas cortas acompañan a las largas', function () {
+  var r = F.evaluarOferta({ capital: 4037370, plazo: 60, unidad: 'meses', tipo: 'cuotas', pago: 130674, cae: 0.3002 });
+  assert.strictEqual(r.cortas.length, r.alertas.length); assert.ok(r.cortas[0].length < 80);
+});
+
 console.log('\n' + pasadas + ' pruebas pasadas' + (process.exitCode ? ' — HAY FALLAS' : ''));

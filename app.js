@@ -45,7 +45,7 @@
 
   /* ---------- estado ---------- */
   var okGuardado = true;
-  function defecto() { return { v: 3, mov: [], ofer: [], cupos: [], saldo: null, cfg: { umbral: 30, tmc: '' }, migr: null }; }
+  function defecto() { return { v: 3, mov: [], ofer: [], cupos: [], dap: [], saldo: null, cfg: { umbral: 30, tmc: '', dec: {} }, migr: null }; }
   function cargar() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -362,6 +362,7 @@
       }
       var ev = F.evaluarOferta({ capital: o.capital, plazo: o.plazo, unidad: o.unidad, tipo: o.tipo, pago: o.pago, tasaMensual: tm, cae: cae });
       if (isFinite(tmc) && tmc > 0 && ev.iA !== null && ev.iA * 100 > tmc) ev.alertas.push('La tasa efectiva anual implícita supera la tasa máxima convencional que ingresaste (' + num(tmc) + '%). La implícita incluye todos los cargos: revisa el detalle con la institución.');
+      if (isFinite(tmc) && tmc > 0 && ev.iA !== null && ev.iA * 100 > tmc) ev.cortas.push('Supera la TMC que ingresaste (' + num(tmc) + '%)');
       return { o: o, ev: ev, cuotaIng: (o.tipo === 'cuotas' && ing && ing.VD > 0) ? o.pago / ing.VD : null };
     }
     D.OFERTAS_OBSERVADAS.forEach(function (b) {
@@ -373,26 +374,145 @@
     return rows;
   }
 
+  function creditosContratados() {
+    return S.ofer.filter(function (o) { return o.estado === 'Contratado' && o.tipo === 'cuotas'; }).map(function (o) {
+      return { o: o, sc: F.saldoCredito({ capital: o.capital, plazo: o.plazo, pago: o.pago, pagadas: o.pagadas || 0 }) };
+    }).filter(function (x) { return x.sc.iM !== null; });
+  }
+  function ofertasCuotas() {
+    return filasOfertas().filter(function (x) { return x.o.tipo === 'cuotas' && x.ev.iM !== null; }).map(function (x) {
+      return { id: x.o.id, iM: x.ev.iM, label: x.o.inst + ' · ' + x.o.prod + ' (' + x.o.plazo + ' cuotas) · ' + F.pct(x.ev.iM, 2) + ' mensual' };
+    }).sort(function (a, b) { return a.iM - b.iM; });
+  }
+
   function renderCarga() {
-    var cont = S.ofer.filter(function (o) { return o.estado === 'Contratado' && o.tipo === 'cuotas'; }), ing = ingresoProm(), el = $('fin-carga'), um = +S.cfg.umbral || 30;
-    var cuotas = cont.reduce(function (s, o) { return s + o.pago; }, 0);
-    var h = '<h3>Tu carga financiera</h3>';
-    if (!cont.length) {
-      h += '<p class="sub">No hay créditos contratados registrados. Las ofertas de abajo son <b>simulaciones</b>: no son deuda. Si contratas alguno, agrégalo con estado «Contratado» para medir cuánto de tu ingreso compromete.</p>';
-    } else if (!ing) {
-      h += '<p class="sub">Tus cuotas mensuales suman <b>' + money(cuotas) + '</b>. Para medir qué parte de tu ingreso comprometen, registra tus ingresos en la pestaña Control.</p>';
-    } else {
+    var cont = creditosContratados(), ing = ingresoProm(), el = $('fin-carga'), um = +S.cfg.umbral || 30;
+    if (!cont.length) { el.innerHTML = '<p class="sub small" style="margin-top:10px">Las ofertas de más abajo son simulaciones, no deuda. Cuando contrates un crédito, agrégalo como «Contratado».</p>'; return; }
+    var cuotas = cont.reduce(function (t, x) { return t + x.o.pago; }, 0), h = '<p style="margin-top:10px"><b>Cuotas mensuales:</b> ' + money(cuotas) + '</p>';
+    if (!ing) h += '<p class="sub small">Registra tus ingresos en Control para medir cuánto de tu ingreso comprometen.</p>';
+    else {
       var rV = ing.V > 0 ? cuotas / ing.V : null, rVD = cuotas / ing.VD, peor = rV !== null ? rV : rVD;
       var estado = peor * 100 <= um ? 'ok' : peor * 100 <= um * 1.15 ? 'warn' : 'bad';
-      h += '<div class="kpis"><div class="kpi sm"><small>Cuotas mensuales</small><b>' + money(cuotas) + '</b><span>' + cont.length + ' crédito(s) contratado(s)</span></div>' +
-        '<div class="kpi sm"><small>Ingreso mensual promedio</small><b>' + money(ing.VD) + '</b><span>declarado + verificado' + (ing.V > 0 ? ' · ' + money(ing.V) + ' verificado' : ' · nada verificado aún') + '</span></div>' +
-        '<div class="kpi sm" data-k="' + (estado === 'ok' ? 'cuadra' : estado === 'warn' ? 'sobra' : 'deficit') + '"><small>Carga sobre el ingreso</small><b>' + (rV !== null ? F.pct(rVD, 0) + ' – ' + F.pct(rV, 0) : F.pct(rVD, 0)) + '</b><span>' + (rV !== null ? 'con ingresos declarados – con solo los verificados' : 'solo hay ingresos declarados') + '</span></div></div>' +
-        '<div class="medidor" role="img" aria-label="Carga financiera frente al umbral"><i style="width:' + Math.min(100, peor * 100) + '%;background:var(--' + (estado === 'ok' ? 'ok' : estado === 'warn' ? 'warn' : 'bad') + ')"></i></div>' +
-        '<p class="sub small">Umbral que tú defines: ' + um + '%. ' + (ing.parcial ? 'El ingreso corresponde al mes en curso (parcial). ' : 'Promedio de ' + ing.meses.length + ' mes(es) completo(s). ') + 'Muchas guías usan referencias del 30 % al 35 %; no es una norma legal.</p>';
+      h += '<p><b>Carga sobre tu ingreso:</b> ' + (rV !== null ? F.pct(rVD, 0) + ' – ' + F.pct(rV, 0) : F.pct(rVD, 0)) + '</p>' +
+        '<div class="medidor" role="img" aria-label="Carga financiera frente al umbral"><i style="width:' + Math.min(100, peor * 100) + '%;background:var(--' + estado + ')"></i></div>' +
+        '<p class="sub small">' + (rV !== null ? 'Con ingresos declarados – con solo los verificados. ' : 'Solo hay ingresos declarados. ') + (ing.parcial ? 'Ingreso del mes en curso (parcial). ' : 'Promedio de ' + ing.meses.length + ' mes(es) completo(s). ') + 'Tu umbral: ' + um + '%.</p>';
     }
-    h += '<div class="form" style="margin-top:12px"><label class="field"><span>Umbral de carga (%)</span><input id="f-umbral" type="text" inputmode="numeric" value="' + esc(um) + '"></label></div>';
+    h += '<details><summary class="small">Ajustar mi umbral</summary><div class="form"><label class="field"><span>Umbral de carga (%)</span><input id="f-umbral" type="text" inputmode="numeric" value="' + esc(um) + '"></label></div><p class="sub small">Muchas guías usan referencias del 30 % al 35 % del ingreso; no es una norma legal.</p></details>';
     el.innerHTML = h;
     $('f-umbral').addEventListener('change', function () { var v = F.parseMonto(this.value); if (v > 0 && v <= 100) { S.cfg.umbral = v; cambiado(); } else { this.value = S.cfg.umbral; } });
+  }
+
+  function renderCred() {
+    var cs = creditosContratados();
+    $('cred-lista').innerHTML = cs.length ? cs.map(function (x) {
+      var o = x.o, sc = x.sc;
+      return '<div class="item"><div><b>' + esc(o.inst) + '</b> · ' + esc(o.prod) + '<div class="sub small">Cuota ' + money(o.pago) + ' · quedan ' + sc.restantes + ' de ' + o.plazo + ' · saldo estimado <b>' + money(sc.saldo) + '</b></div>' +
+        '<div class="small">Tasa efectiva anual <b>' + F.pct(F.anualDesdeMensual(sc.iM), 1) + '</b> · mensual implícita ' + F.pct(sc.iM, 2) + '</div></div><button class="btn small danger" data-del-of="' + o.id + '">Quitar</button></div>';
+    }).join('') : '<p class="sub">Aún no registras créditos contratados.</p>';
+  }
+
+  function renderDap() {
+    var h = hoy(), el = $('dap-lista');
+    if (!S.dap.length) { el.innerHTML = '<p class="sub">Aún no registras depósitos a plazo. Agrega uno (monto, tasa y hasta cuándo) para compararlo con tus créditos.</p>'; return; }
+    el.innerHTML = S.dap.map(function (d) {
+      var e = F.estadoDeposito(d, h), prog = e.total > 0 ? Math.min(100, e.trans / e.total * 100) : 0;
+      var estado = e.noIniciado ? 'Empieza en ' + F.dias(h, d.f0) + ' días' : e.restantes === 0 ? 'Vence hoy' : e.vencido ? 'Venció hace ' + Math.abs(e.restantes) + ' días' : 'Vence en ' + e.restantes + ' días';
+      var tasa = d.tipo === 'uf' ? 'UF + ' + num(d.tasa) + '% real (supones UF ' + num(d.varUF) + '% anual)' : num(d.tasa) + '% ' + d.per;
+      return '<div class="item"><div><b>' + esc(d.inst) + '</b> · ' + (d.tipo === 'uf' ? 'reajustable en UF' : 'en pesos') +
+        '<div class="sub small">' + money(d.monto) + ' · ' + tasa + ' · ≈ ' + F.pct(e.anualEf, 1) + ' anual efectiva' + (d.tipo === 'uf' ? ' (proyección)' : '') + '</div>' +
+        '<div class="medidor" role="img" aria-label="Avance del plazo"><i style="width:' + prog + '%;background:var(--brand)"></i></div>' +
+        '<div class="small">' + fechaCorta(d.f0) + ' → <b>' + fechaCorta(d.fv) + '</b> · ' + estado + '</div>' +
+        '<div class="small">Intereses ganados hoy: <b>' + money(e.interesHoy) + '</b> · Al vencimiento recibes: <b>' + money(e.valorVenc) + '</b></div></div>' +
+        '<button class="btn small danger" data-del-dap="' + d.id + '">Quitar</button></div>';
+    }).join('');
+  }
+
+  /* ---- decisión: invertir o pagar deuda ---- */
+  function renderDecision() {
+    var el = $('dec'), cd = S.cfg.dec || (S.cfg.dec = {});
+    if (!S.dap.length) {
+      el.innerHTML = '<h3>¿Pago el crédito o dejo mi plata invertida?</h3><p class="sub">Agrega tu depósito a plazo (monto, tasa y hasta cuándo) y aquí verás, con tus números, si te conviene pagar un crédito, extender tu inversión o endeudarte. Se calcula con funciones probadas, sin promedios de mercado.</p>' +
+        '<div class="actions" style="margin-top:12px"><button class="btn primary" id="dec-abrir" type="button">Agregar mi depósito a plazo</button></div>';
+      return;
+    }
+    var creds = creditosContratados(), ofs = ofertasCuotas();
+    if (!S.dap.some(function (d) { return d.id === cd.dap; })) cd.dap = S.dap[0].id;
+    if (!creds.some(function (x) { return x.o.id === cd.cred; })) cd.cred = creds.length ? creds[0].o.id : '';
+    if (!ofs.some(function (o) { return o.id === cd.of; })) cd.of = ofs.length ? ofs[0].id : '';
+    if (!(cd.N > 0)) cd.N = 1; if (!(cd.nc > 0)) cd.nc = 12;
+    var opt = function (arr, sel, f) { return arr.map(function (x) { var r = f(x); return '<option value="' + esc(r[0]) + '"' + (r[0] === sel ? ' selected' : '') + '>' + esc(r[1]) + '</option>'; }).join(''); };
+    el.innerHTML = '<h3>¿Pago el crédito o dejo mi plata invertida?</h3>' +
+      '<div class="form" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"><label class="field"><span>Mi depósito</span><select id="dec-dap">' + opt(S.dap, cd.dap, function (d) { return [d.id, d.inst + ' · ' + money(d.monto) + ' · vence ' + fechaCorta(d.fv)]; }) + '</select></label>' +
+      '<label class="field"><span>Mi crédito</span><select id="dec-cred">' + (creds.length ? opt(creds, cd.cred, function (x) { return [x.o.id, x.o.inst + ' · ' + x.o.prod + ' · saldo ' + money(x.sc.saldo)]; }) : '<option value="">Sin créditos contratados</option>') + '</select></label></div>' +
+      '<div class="dec-grid">' +
+      '<div class="mini"><h4>1 · Cada día, ¿qué pesa más?</h4><p class="q">Lo que te cuesta la deuda frente a lo que rinde tu inversión.</p><div id="r1"></div></div>' +
+      '<div class="mini"><h4>2 · Pagar el crédito hoy con mi depósito</h4><p class="q">Terminar hoy o seguir hasta el vencimiento del depósito.</p><div id="r2"></div></div>' +
+      '<div class="mini"><h4>3 · Extender el depósito o prepagar</h4><p class="q">Cuando venza, ¿lo dejo más días invertido o uso el dinero para pagar deuda?</p>' +
+      '<div class="form"><label class="field"><span>Días a extender</span><input id="dec-n" type="text" inputmode="numeric" value="' + esc(cd.N) + '"></label></div><div id="r3"></div></div>' +
+      '<div class="mini"><h4>4 · Necesito plata: ¿crédito nuevo o mi inversión?</h4><p class="q">Para un gasto futuro, ¿endeudarme o usar mi depósito?</p>' +
+      '<div class="form"><label class="field"><span>Monto (CLP)</span><input id="dec-x" type="text" inputmode="numeric" value="' + esc(cd.X ? nf.format(cd.X) : '') + '" placeholder="0"></label>' +
+      '<label class="field"><span>Cuotas</span><input id="dec-nc" type="text" inputmode="numeric" value="' + esc(cd.nc) + '"></label>' +
+      '<label class="field wide"><span>Crédito de referencia</span><select id="dec-of">' + (ofs.length ? opt(ofs, cd.of, function (o) { return [o.id, o.label]; }) : '<option value="">Sin ofertas con cuotas</option>') + '</select></label></div><div id="r4"></div></div>' +
+      '</div><p class="sub small" style="margin-top:12px">Cómo leerlo: compara intereses, con interés simple en el depósito y la tasa implícita en el crédito. <b>No incluye</b> impuestos a los intereses, comisiones que no informaste, ni tu necesidad de tener plata disponible. El retiro anticipado se calcula según lo que indicaste en cada depósito. No es asesoría financiera.</p>';
+    decResultados();
+  }
+
+  function decResultados() {
+    var cd = S.cfg.dec, h = hoy(), d = S.dap.find(function (x) { return x.id === cd.dap; }); if (!d || !$('r1')) return;
+    var cx = creditosContratados().find(function (x) { return x.o.id === cd.cred; });
+    var cred = cx ? { saldo: cx.sc.saldo, iM: cx.sc.iM, pago: cx.o.pago } : null, pre = cx ? (cx.o.prepago || 0) : 0, e = F.estadoDeposito(d, h);
+    var sinCred = '<p class="sub">Registra un crédito <b>contratado</b> (con cuota, plazo y cuotas ya pagadas) para ver esta comparación.</p>';
+    var v = function (txt, clase) { return '<div class="veredicto ' + (clase || '') + '">' + txt + '</div>'; };
+    var li = function (arr) { return '<ul class="lineas">' + arr.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; };
+    var u = d.tipo === 'uf' ? ' <span class="sub">(proyección con UF ' + num(d.varUF) + '% anual)</span>' : '';
+
+    if (!cred) { $('r1').innerHTML = sinCred; $('r2').innerHTML = sinCred; $('r3').innerHTML = sinCred; }
+    else {
+      var a = F.costoDiario(d, cred);
+      $('r1').innerHTML = v(a.razon > 1.05 ? 'La deuda pesa ' + num(a.razon, 1) + ' veces más que tu inversión.' : a.razon < 0.95 ? 'Tu inversión rinde más de lo que cuesta la deuda.' : 'Cuestan casi lo mismo.', a.razon > 1.05 ? 'bad' : 'ok') +
+        li(['Cada <b>$100.000</b> invertidos rinden <b>' + money(a.rendPor100k) + '</b> al día' + u, 'Cada <b>$100.000</b> de deuda cuestan <b>' + money(a.costoPor100k) + '</b> al día',
+          'En tus montos: tu depósito rinde ' + money(a.rendDia) + ' al día y tu deuda de ' + money(cred.saldo) + ' te cuesta ' + money(a.costoDia) + ' al día', 'Tasa mensual: depósito ' + F.pct(a.tmDeposito, 2) + ' · crédito ' + F.pct(a.iMCredito, 2)]);
+
+      var b = F.pagarHoy(d, cred, h, pre);
+      $('r2').innerHTML = !b ? '<p class="sub">Este depósito empieza el ' + fechaCorta(d.f0) + ': todavía no hay dinero invertido que rescatar.</p>' :
+        v(b.ventajaPagar >= 0 ? 'Pagar hoy te ahorra ' + money(b.ventajaPagar) + ' hasta el vencimiento.' : 'Mantener el depósito te deja ' + money(-b.ventajaPagar) + ' más hasta el vencimiento.', b.ventajaPagar >= 0 ? 'ok' : '') +
+        li(['Hoy rescatas <b>' + money(b.rescate) + '</b>' + (d.retiro === 'pierde-intereses' && !e.vencido ? ' (sin intereses, según lo que indicaste)' : ' (capital + intereses ganados)'),
+          'Pagas <b>' + money(b.abono) + '</b> de tu crédito (saldo estimado ' + money(cred.saldo) + ')' + (b.sobra > 0 ? '; te sobran ' + money(b.sobra) + ', que supongo siguen invertidos' : ''),
+          'En ' + b.H + ' días' + (b.supuesto ? ' (el depósito ya venció: supongo renovación a la misma tasa)' : ' (hasta el vencimiento)') + ':',
+          '<b>Mantener:</b> pagas ' + money(b.interesMantener) + ' de intereses y ganas ' + money(b.gananciaDeposito),
+          '<b>Pagar hoy:</b> pagas ' + money(b.interesPagar) + (b.prepago ? ' + ' + money(b.prepago) + ' de prepago' : '') + ' y ganas ' + money(b.gananciaSobrante)]);
+
+      var c = F.extenderVsPrepagar(d, cred, h, cd.N, pre);
+      $('r3').innerHTML = v(c.ventajaPrepagar >= 0 ? 'Prepagar rinde ' + money(c.ventajaPrepagar) + ' más que extender ' + cd.N + ' día(s).' : 'Extender rinde ' + money(-c.ventajaPrepagar) + ' más que prepagar.', c.ventajaPrepagar >= 0 ? 'ok' : '') +
+        li(['Cuando venza el depósito' + (c.diasHastaDecision > 0 ? ' (en ' + c.diasHastaDecision + ' días)' : '') + ' tendrás <b>' + money(c.dinero) + '</b>' + u,
+          '<b>Extender ' + cd.N + ' día(s)</b> a la misma tasa rinde ' + money(c.extender),
+          '<b>Prepagar</b>: usas ' + money(c.usado) + ' (saldo del crédito entonces: ' + money(c.saldoCredito) + '), ahorras ' + money(c.ahorroIntereses) + ' en intereses' + (c.invierteSobrante > 0 ? ' y el sobrante rinde ' + money(c.invierteSobrante) : '')]);
+    }
+
+    var X = cd.X, ofs = ofertasCuotas(), of = ofs.find(function (o) { return o.id === cd.of; });
+    if (!(X > 0)) $('r4').innerHTML = '<p class="sub">Escribe el monto que necesitas para ver la comparación.</p>';
+    else if (!of) $('r4').innerHTML = '<p class="sub">No hay una oferta con cuotas para usar como referencia: agrega una.</p>';
+    else if (!(cd.nc > 0)) $('r4').innerHTML = '<p class="sub">Indica en cuántas cuotas.</p>';
+    else {
+      var r = F.creditoNuevoVsInversion(d, h, X, cd.nc, of.iM);
+      $('r4').innerHTML = v(r.diferencia > 0 ? 'Usar tu inversión te cuesta ' + money(r.diferencia) + ' menos que endeudarte.' : 'Endeudarte te cuesta ' + money(-r.diferencia) + ' menos que usar tu inversión.', r.diferencia > 0 ? 'ok' : '') +
+        li(['<b>Pedir el crédito</b> (' + cd.nc + ' cuotas de ' + money(r.cuota) + ', tasa ' + F.pct(of.iM, 2) + ' mensual): pagas ' + money(r.costoCredito) + ' en intereses',
+          '<b>Usar tu depósito</b>: dejas de ganar ' + money(r.costoInversion) + u,
+          r.alcanza ? 'Tu depósito rescatable hoy (' + money(r.rescate) + ') alcanza para ' + money(X) : '<span class="bad">Tu depósito rescatable hoy (' + money(r.rescate) + ') no alcanza para ' + money(X) + '</span>']);
+    }
+  }
+
+  function enviarDap(e) {
+    e.preventDefault();
+    var tipo = $('d-tipo').value, num2 = function (id) { return parseFloat($(id).value.trim().replace(',', '.')); };
+    var d = { id: uid(), inst: $('d-inst').value.trim(), tipo: tipo, monto: F.parseMonto($('d-monto').value), tasa: num2('d-tasa'), per: tipo === 'uf' ? 'anual' : $('d-per').value,
+      varUF: tipo === 'uf' ? num2('d-uf') : null, f0: F.parseFecha($('d-f0').value), fv: F.parseFecha($('d-fv').value), retiro: $('d-retiro').value };
+    var err = !d.inst ? 'Falta la institución.' : !(d.monto > 0) ? 'El monto debe ser mayor que cero.' : !(d.tasa >= 0) ? 'Ingresa la tasa (puede ser 0).' :
+      (tipo === 'uf' && !isFinite(d.varUF)) ? 'Indica la variación anual de la UF que supones.' : (!d.f0 || !d.fv) ? 'Indica la fecha de inicio y el vencimiento.' : d.fv <= d.f0 ? 'El vencimiento debe ser posterior al inicio.' : null;
+    if (err) { msg('d-msg', err, 'bad'); return; }
+    S.dap.push(d); msg('d-msg', ''); toast('Depósito agregado');
+    ['d-inst', 'd-monto', 'd-tasa', 'd-uf', 'd-fv'].forEach(function (i) { $(i).value = ''; });
+    cambiado();
   }
 
   function renderOfertas() {
@@ -411,17 +531,16 @@
       if (o.caePct !== null && o.caePct !== undefined && o.caePct !== '') inf.push('CAE ' + num(o.caePct) + '%');
       var anual = ev.iA !== null ? F.pct(ev.iA, 1) : ev.anualEq !== null ? '≈ ' + F.pct(ev.anualEq, 0) + ' *' : '—';
       var det = [o.nota, o.fuente, o.fecha ? 'Fecha: ' + fechaCorta(o.fecha) : ''].filter(Boolean);
-      var extra = ev.alertas.map(function (a) { return '<div class="al">⚠ ' + esc(a) + '</div>'; }).join('') +
-        (det.length ? '<details class="small"><summary>Detalle y fuente</summary><div class="sub small">' + det.map(esc).join('<br>') + '</div></details>' : '');
-      return '<tr class="main"><td><b>' + esc(o.inst) + '</b><div class="sub small">' + esc(o.prod) + '</div><span class="tag ' + (o.estado === 'Contratado' ? 'warn' : '') + '">' + esc(o.estado) + '</span></td>' +
-        '<td class="n" data-l="Capital">' + money(o.capital) + '</td>' +
-        '<td data-l="Condiciones">' + o.plazo + ' ' + (o.unidad === 'dias' ? 'días' : 'meses') + '<div class="sub small">' + money(o.pago) + (o.tipo === 'cuotas' ? ' por cuota' : ' pago único') + '</div></td>' +
+      var detalle = '<details class="small"><summary>Detalle' + (ev.alertas.length ? ' ⚠ ' + ev.alertas.length : '') + '</summary><div class="sub small">' +
+        'Tasa mensual implícita: <b>' + (ev.iM !== null ? F.pct(ev.iM, 2) : '—') + '</b> · Costo adicional: <b>' + money(ev.extra) + ' (' + F.pct(ev.extraPct, 1) + ' del capital)</b><br>' +
+        'Informado por la oferta: ' + (inf.length ? inf.map(esc).join(' · ') : 'no informa tasa ni CAE') + (x.cuotaIng !== null ? '<br>Pago sobre tu ingreso: <b>' + F.pct(x.cuotaIng, 0) + '</b>' : '') + '</div>' +
+        ev.alertas.map(function (a) { return '<div class="al">⚠ ' + esc(a) + '</div>'; }).join('') + (det.length ? '<div class="sub small" style="margin-top:6px">' + det.map(esc).join('<br>') + '</div>' : '') +
+        (o.origen === 'usuario' ? '<div style="margin-top:8px"><button class="btn small danger" data-del-of="' + o.id + '">Quitar</button></div>' : '') + '</details>';
+      return '<tr class="main"><td><b>' + esc(o.inst) + '</b><div class="sub small">' + esc(o.prod) + '</div><span class="tag ' + (o.estado === 'Contratado' ? 'warn' : '') + '">' + esc(o.estado) + '</span>' +
+        ev.cortas.map(function (a) { return '<div class="al">⚠ ' + esc(a) + '</div>'; }).join('') + '</td>' +
+        '<td data-l="Condiciones">' + money(o.capital) + ' · ' + o.plazo + ' ' + (o.unidad === 'dias' ? 'días' : 'meses') + '<div class="sub small">' + money(o.pago) + (o.tipo === 'cuotas' ? ' por cuota' : ' pago único') + '</div></td>' +
         '<td class="n" data-l="Total a devolver">' + money(ev.total) + '<div class="sub small">+' + money(ev.extra) + ' · ' + F.pct(ev.extraPct, 1) + '</div></td>' +
-        '<td class="n" data-l="Tasa mensual implícita">' + (ev.iM !== null ? F.pct(ev.iM, 2) : '—') + '</td><td class="n key" data-l="Tasa anual efectiva implícita"><b>' + anual + '</b></td>' +
-        '<td class="small" data-l="Informado por la oferta">' + (inf.length ? inf.map(esc).join('<br>') : '<span class="sub">No informada</span>') + '</td>' +
-        '<td class="n" data-l="Pago / ingreso">' + (x.cuotaIng !== null ? F.pct(x.cuotaIng, 0) : '—') + '</td>' +
-        '<td>' + (o.origen === 'usuario' ? '<button class="btn small danger" data-del-of="' + o.id + '">Quitar</button>' : '') + '</td></tr>' +
-        (extra ? '<tr class="extra"><td colspan="9">' + extra + '</td></tr>' : '');
+        '<td class="n key" data-l="Tasa efectiva anual"><b>' + anual + '</b></td><td class="c-det">' + detalle + '</td></tr>';
     }).join('');
   }
 
@@ -445,15 +564,19 @@
     e.preventDefault();
     var o = { id: uid(), inst: $('o-inst').value.trim(), prod: $('o-prod').value.trim(), estado: $('o-estado').value, fecha: F.parseFecha($('o-fecha').value) || hoy(),
       capital: F.parseMonto($('o-capital').value), tipo: $('o-tipo').value, plazo: F.parseMonto($('o-plazo').value), unidad: $('o-unidad').value, pago: F.parseMonto($('o-pago').value),
-      tasaPct: null, tasaPer: $('o-tasaper').value || null, caePct: null, nota: $('o-nota').value.trim() };
+      tasaPct: null, tasaPer: $('o-tasaper').value || null, caePct: null, nota: $('o-nota').value.trim(), pagadas: 0, prepago: 0 };
+    var contratado = o.estado === 'Contratado' && o.tipo === 'cuotas';
+    if (contratado) { o.pagadas = F.parseMonto($('o-pagadas').value || '0'); o.prepago = F.parseMonto($('o-prepago').value || '0'); }
     var tasa = $('o-tasa').value.trim(), cae = $('o-cae').value.trim();
     if (tasa) o.tasaPct = parseFloat(tasa.replace(',', '.')); if (cae) o.caePct = parseFloat(cae.replace(',', '.'));
     var err = !o.inst || !o.prod ? 'Falta la institución o el producto.' : !(o.capital > 0) ? 'El capital debe ser mayor que cero.' : !(o.plazo > 0) ? 'El plazo debe ser mayor que cero.' : !(o.pago > 0) ? 'El pago debe ser mayor que cero.'
       : (tasa && !isFinite(o.tasaPct)) ? 'La tasa informada no es un número.' : (cae && !isFinite(o.caePct)) ? 'La CAE informada no es un número.' : null;
     if (!err && o.tipo === 'pago-unico' && o.pago < o.capital) err = 'Un pago único menor que el capital recibido no tiene sentido: revisa los datos.';
+    if (!err && contratado && !(o.pagadas >= 0 && o.pagadas < o.plazo)) err = 'Las cuotas ya pagadas deben ser menos que el plazo total.';
+    if (!err && contratado && !(o.prepago >= 0)) err = 'El costo por prepagar no es válido.';
     if (err) { msg('o-msg', err, 'bad'); return; }
     S.ofer.push(o); msg('o-msg', ''); toast('Oferta agregada al comparador');
-    ['o-inst', 'o-prod', 'o-capital', 'o-plazo', 'o-pago', 'o-tasa', 'o-cae', 'o-nota'].forEach(function (i) { $(i).value = ''; });
+    ['o-inst', 'o-prod', 'o-capital', 'o-plazo', 'o-pago', 'o-tasa', 'o-cae', 'o-nota', 'o-pagadas', 'o-prepago'].forEach(function (i) { $(i).value = ''; });
     cambiado();
   }
   function enviarCupo(e) {
@@ -553,7 +676,7 @@
   }
 
   /* ---------- render general ---------- */
-  function renderTodo() { renderMigracion(); renderControl(); renderCarga(); renderOfertas(); renderCupos(); renderBrecha(); $('f-tmc').value = S.cfg.tmc || ''; }
+  function renderTodo() { renderMigracion(); renderControl(); renderDap(); renderCred(); renderCarga(); renderOfertas(); renderDecision(); renderCupos(); renderBrecha(); $('f-tmc').value = S.cfg.tmc || ''; }
 
   /* ---------- eventos ---------- */
   function iniciar() {
@@ -603,16 +726,42 @@
     $('bk-file').addEventListener('change', function () { if (this.files[0]) restaurar(this.files[0]); this.value = ''; });
     $('bk-borrar').addEventListener('click', borrarTodo);
 
+    $('f-dap').addEventListener('submit', enviarDap);
+    $('d-tipo').addEventListener('change', function () {
+      var uf = this.value === 'uf'; $('d-per-w').hidden = uf; $('d-uf-w').hidden = !uf; $('d-tasa-l').textContent = uf ? 'Tasa real anual sobre la UF (%)' : 'Tasa (%)';
+    });
+    $('d-f0').value = hoy();
+    $('dap-lista').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-del-dap]'); if (!b) return;
+      if (confirm('¿Quitar este depósito?')) { S.dap = S.dap.filter(function (x) { return x.id !== b.dataset.delDap; }); cambiado(); }
+    });
+    $('dec').addEventListener('change', function (e) {
+      var t = e.target, cd = S.cfg.dec;
+      if (t.id === 'dec-dap') cd.dap = t.value; else if (t.id === 'dec-cred') cd.cred = t.value; else if (t.id === 'dec-of') cd.of = t.value; else return;
+      guardar(); decResultados();
+    });
+    $('dec').addEventListener('input', function (e) {
+      var t = e.target, cd = S.cfg.dec;
+      if (t.id === 'dec-n') cd.N = Math.max(0, F.parseMonto(t.value) || 0); else if (t.id === 'dec-x') cd.X = Math.max(0, F.parseMonto(t.value) || 0); else if (t.id === 'dec-nc') cd.nc = Math.max(0, F.parseMonto(t.value) || 0); else return;
+      guardar(); decResultados();
+    });
+    $('dec').addEventListener('click', function (e) {
+      if (e.target.id !== 'dec-abrir') return;
+      $('dap-det').open = true; $('dap-card').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('d-inst').focus();
+    });
+    var contr = function () { var c = $('o-estado').value === 'Contratado' && $('o-tipo').value === 'cuotas'; $('o-pag-w').hidden = !c; $('o-pre-w').hidden = !c; };
+    $('o-estado').addEventListener('change', contr); $('o-tipo').addEventListener('change', contr);
     $('f-orden').addEventListener('change', renderOfertas);
     $('f-of').addEventListener('submit', enviarOferta);
     $('o-tipo').addEventListener('change', function () {
       var u = this.value === 'pago-unico'; $('o-pago-l').textContent = u ? 'Total a pagar (CLP)' : 'Cuota mensual total (CLP)';
       if (u) $('o-unidad').value = 'dias'; else $('o-unidad').value = 'meses';
     });
-    $('f-tabla').addEventListener('click', function (e) {
+    var quitarOferta = function (e) {
       var b = e.target.closest('button[data-del-of]'); if (!b) return;
-      if (confirm('¿Quitar esta oferta del comparador?')) { S.ofer = S.ofer.filter(function (o) { return o.id !== b.dataset.delOf; }); cambiado(); }
-    });
+      if (confirm('¿Quitar este crédito u oferta?')) { S.ofer = S.ofer.filter(function (o) { return o.id !== b.dataset.delOf; }); cambiado(); }
+    };
+    $('f-tabla').addEventListener('click', quitarOferta); $('cred-lista').addEventListener('click', quitarOferta);
     $('f-cupo').addEventListener('submit', enviarCupo);
     $('cupos-lista').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-del-cupo]'); if (!b) return;

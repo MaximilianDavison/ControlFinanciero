@@ -93,14 +93,14 @@
   /* o = {capital, plazo, unidad:'meses'|'dias', tipo:'cuotas'|'pago-unico', pago, tasaMensual?, cae?}
    * tasaMensual y cae son fracciones (0,0245). Devuelve cifras + alertas en lenguaje claro. */
   function evaluarOferta(o) {
-    var r = { total: null, extra: null, extraPct: null, iM: null, iA: null, anualEq: null, alertas: [] };
+    var r = { total: null, extra: null, extraPct: null, iM: null, iA: null, anualEq: null, alertas: [], cortas: [] };
     var cap = o.capital, pago = o.pago, n = o.plazo;
-    if (!(cap > 0 && pago > 0 && n > 0)) { r.alertas.push('Faltan datos para calcular.'); return r; }
+    if (!(cap > 0 && pago > 0 && n > 0)) { r.alertas.push('Faltan datos para calcular.'); r.cortas.push('Faltan datos'); return r; }
     if (o.tipo === 'cuotas') {
       r.total = pago * n;
       r.iM = tasaImplicita(cap, pago, n);
       if (r.iM !== null) r.iA = anualDesdeMensual(r.iM);
-      else r.alertas.push('La suma de las cuotas es menor que el capital: revisa los datos.');
+      else { r.alertas.push('La suma de las cuotas es menor que el capital: revisa los datos.'); r.cortas.push('Las cuotas suman menos que el capital'); }
     } else {
       r.total = pago;
       if (o.unidad === 'dias') r.anualEq = anualizadoPagoUnico(cap, pago, n);
@@ -110,11 +110,11 @@
     if (o.cae != null && r.iA != null && Math.abs(r.iA - o.cae) > 0.01) {
       r.alertas.push('La tasa efectiva anual implícita (' + pct(r.iA) + ') difiere de la CAE informada (' + pct(o.cae) +
         ') en ' + (Math.abs(r.iA - o.cae) * 100).toFixed(1).replace('.', ',') +
-        ' puntos. Puede deberse a seguros, comisiones, impuestos, la fecha del primer pago o un error de lectura: verifica el contrato.');
+        ' puntos. Puede deberse a seguros, comisiones, impuestos, la fecha del primer pago o un error de lectura: verifica el contrato.');      r.cortas.push('Tasa implícita ' + pct(r.iA) + ' frente a CAE informada ' + pct(o.cae));
     }
     if (o.tasaMensual != null && r.iM != null && r.iM - o.tasaMensual > 0.0015) {
       r.alertas.push('La tasa mensual implícita (' + pct(r.iM, 2) + ') es mayor que la informada (' + pct(o.tasaMensual, 2) +
-        '): la cuota podría incluir otros cargos.');
+        '): la cuota podría incluir otros cargos.');      r.cortas.push('Tasa mensual implícita ' + pct(r.iM, 2) + ' mayor que la informada ' + pct(o.tasaMensual, 2));
     }
     return r;
   }
@@ -293,12 +293,84 @@
     return { filas: ok, errores: errores };
   }
 
+
+  /* ---------- depósitos a plazo y decisiones: invertir o pagar deuda ---------- */
+  /* Supuestos (se muestran en la página): interés simple prorrateado por días sobre la tasa mensual equivalente;
+   * sin impuestos; el retiro antes del vencimiento sigue la opción «sin costo» o «pierde intereses» de cada depósito. */
+  function dias(f1, f2) {
+    var a = f1.split('-'), b = f2.split('-');
+    return Math.round((Date.UTC(+b[0], +b[1] - 1, +b[2]) - Date.UTC(+a[0], +a[1] - 1, +a[2])) / 864e5);
+  }
+  /* d = {tipo:'pesos'|'uf', tasa (% ), per:'mensual'|'anual', varUF (% anual supuesto, solo UF)} → tasa mensual equivalente (fracción). */
+  function tasaMensualDeposito(d) {
+    var t = d.tasa / 100;
+    if (d.tipo === 'uf') return mensualDesdeAnual((1 + t) * (1 + d.varUF / 100) - 1);
+    return d.per === 'anual' ? mensualDesdeAnual(t) : t;
+  }
+  function interesDeposito(d, nDias) { return d.monto * tasaMensualDeposito(d) * nDias / 30; }
+  function estadoDeposito(d, hoy) {
+    var total = dias(d.f0, d.fv), trans = Math.min(Math.max(dias(d.f0, hoy), 0), total), rest = dias(hoy, d.fv), tm = tasaMensualDeposito(d);
+    return { total: total, trans: trans, restantes: rest, vencido: rest <= 0, noIniciado: hoy < d.f0, tm: tm, anualEf: anualDesdeMensual(tm),
+      interesHoy: interesDeposito(d, trans), interesVenc: interesDeposito(d, total), valorHoy: d.monto + interesDeposito(d, trans), valorVenc: d.monto + interesDeposito(d, total) };
+  }
+  /* Dinero que recibes si lo retiras hoy. */
+  function rescateHoy(d, hoy) {
+    var e = estadoDeposito(d, hoy);
+    return (d.retiro === 'pierde-intereses' && !e.vencido) ? d.monto : d.monto + e.interesHoy;
+  }
+  /* c = {capital, plazo, pago, pagadas} → tasa implícita mensual y saldo estimado (valor presente de las cuotas que faltan). */
+  function saldoCredito(c) {
+    var iM = tasaImplicita(c.capital, c.pago, c.plazo), rest = Math.max(0, c.plazo - (c.pagadas || 0));
+    return { iM: iM, restantes: rest, saldo: saldoPendiente(c.pago, iM || 0, rest) };
+  }
+  /* Intereses que se pagan en nDias si se sigue pagando la misma cuota cada 30 días; el último tramo se prorratea. */
+  function simularCredito(saldo, iM, pago, nDias) {
+    var B = saldo, I = 0, meses = Math.floor(nDias / 30), resto = nDias - meses * 30, k, i;
+    for (k = 0; k < meses && B > 0; k++) { i = B * iM; I += i; B = B + i - pago; if (B < 0) B = 0; }
+    if (resto > 0 && B > 0) I += B * iM * resto / 30;
+    return { interes: I, saldoFinal: B };
+  }
+  /* 1 · Costo diario del crédito frente al rendimiento diario del depósito. */
+  function costoDiario(d, c) {
+    var tm = tasaMensualDeposito(d), rd = tm / 30, rc = Math.pow(1 + c.iM, 1 / 30) - 1;
+    return { rendDia: d.monto * rd, costoDia: c.saldo * rc, rendPor100k: 100000 * rd, costoPor100k: 100000 * rc, razon: rd > 0 ? rc / rd : null, tmDeposito: tm, iMCredito: c.iM };
+  }
+  /* 2 · Pagar el crédito hoy con el depósito, frente a mantener ambos hasta el vencimiento del depósito.
+   * Si el depósito ya venció, se compara por 30 días suponiendo renovación a la misma tasa. */
+  function pagarHoy(d, c, hoy, prepago) {
+    var e = estadoDeposito(d, hoy); if (e.noIniciado) return null;
+    var H = e.restantes > 0 ? e.restantes : 30, P = prepago || 0, resc = rescateHoy(d, hoy), disp = Math.max(0, resc - P);
+    var abono = Math.min(disp, c.saldo), sobra = disp - abono;
+    var keep = simularCredito(c.saldo, c.iM, c.pago, H), pay = simularCredito(c.saldo - abono, c.iM, c.pago, H);
+    var gDep = d.monto * e.tm * H / 30, gSobra = sobra * e.tm * H / 30;
+    var costoMantener = keep.interes - gDep, costoPagar = pay.interes + P - gSobra;
+    return { H: H, supuesto: e.restantes <= 0, rescate: resc, abono: abono, sobra: sobra, prepago: P, interesMantener: keep.interes, interesPagar: pay.interes,
+      gananciaDeposito: gDep, gananciaSobrante: gSobra, costoMantener: costoMantener, costoPagar: costoPagar, ventajaPagar: costoMantener - costoPagar };
+  }
+  /* 3 · Al vencer el depósito: ¿lo extiendo N días o uso ese dinero para prepagar el crédito? tasaRenov (mensual, fracción) opcional. */
+  function extenderVsPrepagar(d, c, hoy, N, prepago, tasaRenov) {
+    var e = estadoDeposito(d, hoy), tm = tasaRenov != null ? tasaRenov : e.tm, hasta = Math.max(e.restantes, 0), P = prepago || 0;
+    var M = e.valorVenc, B = simularCredito(c.saldo, c.iM, c.pago, hasta).saldoFinal, usado = Math.min(Math.max(0, M - P), B);
+    var extender = M * tm * N / 30, ahorro = usado * (Math.pow(1 + c.iM, N / 30) - 1), sobra = Math.max(0, M - P - usado), invSobra = sobra * tm * N / 30;
+    var prepagar = ahorro + invSobra - P;
+    return { diasHastaDecision: hasta, dinero: M, saldoCredito: B, usado: usado, extender: extender, ahorroIntereses: ahorro, invierteSobrante: invSobra, prepagar: prepagar, ventajaPrepagar: prepagar - extender };
+  }
+  /* 4 · Necesito X: ¿pido un crédito de n cuotas a la tasa mensual iM o uso mi depósito (sin costo)? */
+  function creditoNuevoVsInversion(d, hoy, X, n, iM) {
+    var tm = tasaMensualDeposito(d), cuota = cuotaFrancesa(X, iM, n), resc = rescateHoy(d, hoy);
+    var costoCredito = cuota * n - X, costoInversion = X * tm * n;
+    return { cuota: cuota, costoCredito: costoCredito, costoInversion: costoInversion, diferencia: costoCredito - costoInversion, alcanza: resc >= X, rescate: resc };
+  }
+
   return {
     TIPOS: TIPOS, pct: pct, parseMonto: parseMonto, parseFecha: parseFecha, hoyISO: hoyISO, mesDe: mesDe, sinTildes: sinTildes,
     cuotaFrancesa: cuotaFrancesa, tasaImplicita: tasaImplicita, anualDesdeMensual: anualDesdeMensual, mensualDesdeAnual: mensualDesdeAnual,
     anualizadoPagoUnico: anualizadoPagoUnico, saldoPendiente: saldoPendiente, evaluarOferta: evaluarOferta,
     evEfectiva: evEfectiva, signo: signo, totales: totales, porMes: porMes, topDescripciones: topDescripciones,
     respaldoPorTipo: respaldoPorTipo, indiceRespaldo: indiceRespaldo, cajaAcumulada: cajaAcumulada, ingresosPromedio: ingresosPromedio,
-    normalizarTipo: normalizarTipo, validarMov: validarMov, importarTexto: importarTexto
+    normalizarTipo: normalizarTipo, validarMov: validarMov, importarTexto: importarTexto,
+    dias: dias, tasaMensualDeposito: tasaMensualDeposito, interesDeposito: interesDeposito, estadoDeposito: estadoDeposito, rescateHoy: rescateHoy,
+    saldoCredito: saldoCredito, simularCredito: simularCredito, costoDiario: costoDiario, pagarHoy: pagarHoy, extenderVsPrepagar: extenderVsPrepagar,
+    creditoNuevoVsInversion: creditoNuevoVsInversion
   };
 });
