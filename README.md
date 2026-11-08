@@ -41,6 +41,9 @@ Vercel: *Add New → Project*, Framework Preset **Other**, sin comando de compil
 - Instituciones sugeridas, ofertas observadas y fichas: `datos.js`.
 - Un cálculo nuevo va en `finanzas.js` junto con su prueba en `tests/finanzas.test.js`.
 
+## Historial de cambios
+Ver `registros/2026-11-08-rediseno-orden-financiero.md`: qué cambió, cómo se verificó, hallazgos con datos reales y pendientes.
+
 ## Limitaciones
 - No hay carga de cartolas ni conciliación automática: hoy se verifica a mano, indicando el documento.
 - No sincroniza entre dispositivos (la versión con Supabase quedó en `legacy/`).
