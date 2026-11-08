@@ -1,48 +1,26 @@
--- Orden financiero · esquema para Supabase (ejecutar en SQL Editor)
-
-create table public.movimientos (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  fecha       date not null,
-  tipo        text not null check (tipo in ('Ingreso','Inversión','Costo','Gasto')),
-  descripcion text not null check (length(btrim(descripcion)) > 0),
-  monto       numeric(14,2) not null check (monto >= 0),
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+BEGIN;
+CREATE TABLE IF NOT EXISTS public.parametros (
+ user_id text PRIMARY KEY,
+ saldo_ahorro numeric(14,2) NOT NULL DEFAULT 0 CHECK(saldo_ahorro>=0),
+ tasa_anual numeric(6,3) NOT NULL DEFAULT 0,
+ meses_fondo integer NOT NULL DEFAULT 3 CHECK(meses_fondo BETWEEN 0 AND 120),
+ inversion_auto boolean NOT NULL DEFAULT false,
+ revision integer NOT NULL DEFAULT 0,
+ updated_at timestamptz NOT NULL DEFAULT now()
 );
-create index movimientos_user_fecha_idx on public.movimientos (user_id, fecha);
-
-create table public.parametros (
-  user_id         uuid primary key default auth.uid() references auth.users(id) on delete cascade,
-  saldo_ahorro    numeric(14,2) not null default 0 check (saldo_ahorro >= 0),
-  tasa_anual      numeric(6,3)  not null default 0,
-  meses_fondo     int           not null default 3 check (meses_fondo >= 0),
-  inversion_auto  boolean       not null default true,
-  updated_at      timestamptz   not null default now()
+CREATE TABLE IF NOT EXISTS public.movimientos (
+ id uuid PRIMARY KEY,
+ user_id text NOT NULL REFERENCES public.parametros(user_id),
+ fecha date NOT NULL,
+ tipo text NOT NULL CHECK(tipo IN ('Ingreso','Inversión','Costo','Gasto')),
+ descripcion text NOT NULL CHECK(length(btrim(descripcion)) BETWEEN 1 AND 500),
+ monto numeric(14,2) NOT NULL CHECK(monto>0),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-create function public.set_updated_at() returns trigger
-language plpgsql set search_path = '' as $$
-begin new.updated_at = now(); return new; end $$;
-
-create trigger movimientos_updated before update on public.movimientos
-  for each row execute function public.set_updated_at();
-create trigger parametros_updated before update on public.parametros
-  for each row execute function public.set_updated_at();
-
--- Seguridad: cada usuario solo ve y modifica sus propias filas.
-alter table public.movimientos enable row level security;
-alter table public.parametros  enable row level security;
-
-create policy "movimientos: dueño" on public.movimientos
-  for all to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
-
-create policy "parametros: dueño" on public.parametros
-  for all to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
-
-revoke all on public.movimientos, public.parametros from anon;
-grant select, insert, update, delete on public.movimientos, public.parametros to authenticated;
+CREATE INDEX IF NOT EXISTS movimientos_user_fecha_idx ON public.movimientos(user_id,fecha);
+-- Acceso exclusivamente desde el servidor, que filtra por la sesión verificada.
+ALTER TABLE public.parametros ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.movimientos ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.parametros,public.movimientos FROM PUBLIC;
+COMMIT;
