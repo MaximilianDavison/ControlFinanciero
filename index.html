@@ -5,13 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orden financiero</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js">
-// Simulación de crédito separada del libro mayor y de los créditos efectivamente contratados.
-(function(){
- var rows=[[2,105022],[10,23843],[17,15597],[24,12233]], capital=200000;
- function rate(n,p){var lo=0,hi=1;for(var k=0;k<90;k++){var mid=(lo+hi)/2;var pv=p*(1-Math.pow(1+mid,-n))/mid;if(pv>capital)lo=mid;else hi=mid;}return (lo+hi)/2;}
- var target=document.getElementById('sim-tenpo');if(!target)return;
- target.innerHTML=rows.map(function(x){var total=x[0]*x[1];return '<tr><td>'+x[0]+' cuotas</td><td>'+fm.format(x[1])+'</td><td>'+fm.format(total)+'</td><td>'+fm.format(total-capital)+'</td><td>'+(rate(x[0],x[1])*100).toFixed(2).replace('.',',')+'%</td></tr>'}).join('');
-})();
+// Catálogo extensible de simulaciones; independiente de movimientos efectivos.
+var SIMULACIONES_CREDITO=[
+ {id:'tenpo-20261108',institucion:'Tenpo',producto:'Avance en cuotas',fecha:'2026-11-08',capital:200000,unidad:'meses',tipo:'cuotas',primeraCuota:'05/12/2026',opciones:[{plazo:2,pago:105022},{plazo:10,pago:23843},{plazo:17,pago:15597},{plazo:24,pago:12233}],nota:'Tasa mensual implícita estimada bajo cuotas mensuales iguales. No se dispone de CAE contractual.',evidencia:'registros/2026-11-08-tenpo-avance-y-facturacion.md'},
+ {id:'mercadopago-20261108',institucion:'Mercado Pago / Mercado Libre',producto:'Dinero Plus',fecha:'2026-11-08',capital:31000,unidad:'días',tipo:'pago-unico',opciones:[{plazo:7,pago:31342},{plazo:14,pago:31624},{plazo:21,pago:31906},{plazo:28,pago:32188}],nota:'Oferta observada: cupo de crédito para compras $136.000 y mención de $31.000 adicionales en Dinero Plus. El posible primer pago 06/12 corresponde a compras sujetas a condiciones, no necesariamente a Dinero Plus. No consta CAE ni contratación.',evidencia:'registros/2026-11-08-mercadopago-dinero-plus.md'}
+];
+function renderSimulaciones(){
+ var sel=document.getElementById('sim-selector'),out=document.getElementById('sim-detalle');if(!sel||!out)return;
+ sel.innerHTML=SIMULACIONES_CREDITO.map(function(s){return '<option value="'+s.id+'">'+s.institucion+' — '+s.producto+' ('+fm.format(s.capital)+')</option>'}).join('');
+ function tasa(n,p,capital){var lo=0,hi=1;for(var k=0;k<90;k++){var m=(lo+hi)/2;var pv=p*(1-Math.pow(1+m,-n))/m;if(pv>capital)lo=m;else hi=m;}return (lo+hi)/2}
+ function draw(){var s=SIMULACIONES_CREDITO.find(function(x){return x.id===sel.value});if(!s)return;
+ var head=s.tipo==='cuotas'?'Cuota mensual':'Pago único';
+ var rows=s.opciones.map(function(o){var total=s.tipo==='cuotas'?o.plazo*o.pago:o.pago,extra=total-s.capital;
+ var rate=s.tipo==='cuotas'?(tasa(o.plazo,o.pago,s.capital)*100).toFixed(2).replace('.',',')+'% mensual implícita':'—';
+ return '<tr><td>'+o.plazo+' '+s.unidad+'</td><td>'+fm.format(o.pago)+'</td><td>'+fm.format(total)+'</td><td>'+fm.format(extra)+'</td><td>'+rate+'</td></tr>'}).join('');
+ out.innerHTML='<h2>'+s.institucion+' — '+s.producto+'</h2><p class="sub">Capital simulado: '+fm.format(s.capital)+' · Fecha de captura: '+s.fecha+' · Estado: simulación, no contratado'+(s.primeraCuota?' · Primera cuota indicada: '+s.primeraCuota:'')+'</p><div class="sc"><table><thead><tr><th>Plazo</th><th>'+head+'</th><th>Total a devolver</th><th>Costo adicional</th><th>Tasa estimada</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="sub">'+s.nota+'</p><p class="sub"><a href="'+s.evidencia+'" target="_blank" rel="noopener noreferrer">Ver ficha de evidencia</a>. Capturas originales entregadas en la conversación, no almacenadas en este repositorio.</p>';
+ }
+ sel.onchange=draw;draw();
+}
+renderSimulaciones();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -67,11 +79,11 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 </div>
 
 <div class="card" id="credito-simulacion">
-<h2>2. Tasa de interés y crédito — simulación Tenpo</h2>
-<p class="sub">Cotización observada el 08/11/2026 por $200.000 CLP. No es un crédito contratado. Primera cuota indicada: 05/12/2026. Tasas implícitas estimadas, no tasas contractuales ni CAE.</p>
-<div class="sc"><table><thead><tr><th>Plazo</th><th>Cuota</th><th>Total</th><th>Costo adicional</th><th>Tasa mensual implícita*</th></tr></thead><tbody id="sim-tenpo"></tbody></table></div>
-<p class="sub">*Tasa calculada suponiendo desembolso íntegro de $200.000 y cuotas iguales mensuales, sin cargos externos. La CAE oficial, impuestos y comisiones no constan en las capturas.</p>
-<p class="sub"><a href="https://github.com/MaximilianDavison/ControlFinanciero/blob/main/registros/2026-11-08-tenpo-avance-y-facturacion.md" target="_blank" rel="noopener noreferrer">Ver evidencia y notas de la simulación</a>. Las fotografías originales fueron entregadas en la conversación; aún no están alojadas en GitHub.</p>
+<h2>2. Tasa de interés y crédito</h2>
+<p class="sub">Comparador de simulaciones por institución y producto. Las ofertas no son deudas contratadas. Los costos calculados no equivalen a la CAE oficial.</p>
+<div class="row"><label>Simulación <select id="sim-selector"></select></label></div>
+<div id="sim-detalle"></div>
+<p class="sub">Para incorporar otra institución se agrega un objeto al catálogo SIMULACIONES_CREDITO, sin modificar el diseño ni el libro mayor.</p>
 </div>
 
 <div class="card"><h2>Movimientos (editables)</h2>
