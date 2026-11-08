@@ -34,7 +34,7 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 .ok{color:var(--ok)}.bad{color:var(--bad)}
 #st{font-size:13px;margin:0 0 14px}summary{cursor:pointer;font-weight:600}
 </style>
-</head>
+<link rel="stylesheet" href="/finance-tools.css"></head>
 <body>
 <main>
 <h1>Orden financiero</h1>
@@ -42,7 +42,7 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 <div class="card" id="lg" hidden><h2>Iniciar sesión</h2><div class="row"><input id="em" type="email" placeholder="Correo" autocomplete="username"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button class="p" id="in">Entrar</button><button id="up">Crear cuenta</button></div><p class="bad" id="lm"></p></div>
 <div class="row" id="bar" hidden><span id="who" class="sub"></span><button id="so">Cerrar sesión</button></div>
 <p id="cs" class="sub"></p>
-<div id="app" hidden>
+<div id="app" hidden><nav class="finance-tabs" role="tablist" aria-label="Herramientas financieras"><button id="tab-overview" role="tab" data-tab="overview" aria-controls="panel-overview" aria-selected="true">Mi dinero</button><button id="tab-creditos" role="tab" data-tab="creditos" aria-controls="panel-creditos" aria-selected="false" tabindex="-1">Créditos y tarjetas</button><button id="tab-radar" role="tab" data-tab="radar" aria-controls="panel-radar" aria-selected="false" tabindex="-1">Radar de futuro</button></nav><section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
 
 <div class="card">
 <div class="row">
@@ -57,7 +57,7 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 <p id="st"></p>
 </div>
 
-<div class="card"><h2>Tu asistente financiero</h2><p class="sub">Cuéntame tus ingresos, gastos o aportes de inversión en pesos chilenos. Revisa la propuesta antes de confirmar. Si falta un dato, responde con la aclaración. El texto se envía a OpenAI para interpretarlo.</p><textarea id="message" rows="3" style="width:100%" placeholder="Ayer gasté 25 mil en supermercado e invertí 100 mil en mi fondo"></textarea><div class="row"><button id="interpret">Revisar movimientos</button><button id="confirmText" class="p" hidden>Confirmar y agregar</button></div><pre id="preview" style="white-space:pre-wrap" aria-live="polite"></pre></div><div class="card"><h2>Movimientos (editables)</h2>
+<div class="card"><h2>Tu asistente financiero</h2><p class="sub">Cuéntame tus ingresos, gastos o aportes de inversión en pesos chilenos. Revisa la propuesta antes de confirmar. Si falta un dato, responde con la aclaración. El texto se envía a Groq para interpretarlo.</p><textarea id="message" rows="3" style="width:100%" placeholder="Ayer gasté 25 mil en supermercado e invertí 100 mil en mi fondo"></textarea><div class="row"><button id="interpret">Revisar movimientos</button><button id="confirmText" class="p" hidden>Confirmar y agregar</button></div><pre id="preview" style="white-space:pre-wrap" aria-live="polite"></pre></div><div class="card"><h2>Movimientos (editables)</h2>
 <div class="row">
 <input type="date" id="nf">
 <select id="nt"><option>Ingreso</option><option>Inversión</option><option>Costo</option><option>Gasto</option></select>
@@ -84,11 +84,367 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 <div class="card"><h2>Destino de los ingresos</h2>
 <div class="ch" style="margin-top:38px"><canvas id="c3"></canvas></div></div>
 </div>
+</section><section
+  id="panel-creditos"
+  role="tabpanel"
+  aria-labelledby="tab-creditos"
+  hidden
+>
+  <div class="tool-intro">
+    <span class="eyebrow">ANTES DE COMPROMETERTE</span>
+    <h2>La cuota es solo el comienzo.</h2>
+    <p>
+      Compara lo que recibes, lo que pagas y cuánto tiempo te acompaña una
+      deuda. Los valores iniciales son ejemplos editables.
+    </p>
+  </div>
+  <div class="tool-grid">
+    <article class="card">
+      <h3>Créditos y préstamos</h3>
+      <p class="sub">Cuotas mensuales, tasa fija y primer pago en un mes.</p>
+      <form id="loan-form" class="tool-form" novalidate>
+        <label
+          >Monto del préstamo (CLP)<input
+            id="loan-principal"
+            type="number"
+            value="1000000"
+            min="1"
+            max="10000000000"
+            step="1000"
+            required
+        /></label>
+        <label
+          >Plazo pactado (meses)<input
+            id="loan-months"
+            type="number"
+            value="12"
+            min="1"
+            max="600"
+            step="1"
+            required
+        /></label>
+        <label
+          >Tasa de interés (%)<input
+            id="loan-rate"
+            type="number"
+            value="2"
+            min="0"
+            max="1000"
+            step="0.01"
+            required
+        /></label>
+        <label
+          >Tipo de tasa<select id="loan-basis">
+            <option value="monthly">Mensual</option>
+            <option value="annual-nominal">Anual nominal</option>
+            <option value="annual-effective">Anual efectiva</option>
+          </select></label
+        >
+        <label
+          >Seguros y cargos por mes (CLP)<input
+            id="loan-fees"
+            type="number"
+            value="0"
+            min="0"
+            step="100"
+            required
+        /></label>
+        <label
+          >Cargo inicial pagado al contratar (CLP)<input
+            id="loan-upfront"
+            type="number"
+            value="0"
+            min="0"
+            step="100"
+            required
+        /></label>
+        <label class="wide"
+          >Abono extra mensual que quieres probar (CLP)<input
+            id="loan-extra"
+            type="number"
+            value="20000"
+            min="0"
+            step="1000"
+            required
+        /></label>
+      </form>
+      <p id="loan-error" class="bad" role="alert"></p>
+      <div id="loan-results" aria-live="polite"></div>
+      <button id="loan-to-radar" class="p">
+        Probar esta cuota en mi Radar
+      </button>
+    </article>
+    <article class="card">
+      <h3>Tarjeta de crédito</h3>
+      <p class="sub">
+        Compara tu pago habitual con un pago mayor, sin compras nuevas.
+      </p>
+      <form id="card-form" class="tool-form" novalidate>
+        <label
+          >Deuda facturada a simular (CLP)<input
+            id="card-principal"
+            type="number"
+            value="500000"
+            min="1"
+            max="10000000000"
+            step="1000"
+            required
+        /></label>
+        <label
+          >Tasa mensual de la deuda (%)<input
+            id="card-rate"
+            type="number"
+            value="2.5"
+            min="0"
+            max="1000"
+            step="0.01"
+            required
+        /></label>
+        <label
+          >Pago mensual fijo (CLP)<input
+            id="card-payment"
+            type="number"
+            value="30000"
+            min="1"
+            step="1000"
+            required
+        /></label>
+        <label
+          >Mantención y cargos por mes (CLP)<input
+            id="card-fees"
+            type="number"
+            value="0"
+            min="0"
+            step="100"
+            required
+        /></label>
+        <label class="wide"
+          >Pago adicional mensual (CLP)<input
+            id="card-extra"
+            type="number"
+            value="20000"
+            min="0"
+            step="1000"
+            required
+        /></label>
+      </form>
+      <p id="card-error" class="bad" role="alert"></p>
+      <div id="card-results" aria-live="polite"></div>
+      <button id="card-to-radar" class="p">
+        Probar el pago mayor en mi Radar
+      </button>
+    </article>
+  </div>
+  <article class="card methodology">
+    <h3>Qué incluye cada simulación</h3>
+    <p>
+      El crédito usa amortización de cuota fija y redondeo mensual a centavos.
+      El costo total suma las cuotas y el cargo inicial. El costo anual efectivo
+      estimado iguala el dinero neto recibido con los pagos futuros; incluye
+      solo los cargos que ingresaste y
+      <strong>no reemplaza la CAE contractual</strong>.
+    </p>
+    <p>
+      La tarjeta usa la tasa mensual y el pago fijo que ingresas; no calcula el
+      mínimo regulatorio. No hay compras nuevas, avances, mora ni cambios de
+      tasa. Los abonos extra son hipotéticos y no incluyen comisiones de
+      prepago. No se registran deudas ni movimientos reales al simular.
+    </p>
+    <p>
+      Consulta:
+      <a
+        href="https://www.cmfeduca.cl/educa/informativo/ed_01/index.html"
+        target="_blank"
+        rel="noopener noreferrer"
+        >CMF: comparar un crédito</a
+      >
+      ·
+      <a
+        href="https://www.cmfchile.cl/portal/principal/623/w4-article-27595.html"
+        target="_blank"
+        rel="noopener noreferrer"
+        >CMF: plazo de pago de una tarjeta</a
+      >.
+    </p>
+  </article>
+</section>
+<section id="panel-radar" role="tabpanel" aria-labelledby="tab-radar" hidden>
+  <div class="tool-intro radar-intro">
+    <span class="eyebrow">RADAR DE FUTURO</span>
+    <h2>Prueba una decisión antes de vivirla.</h2>
+    <p>
+      Tu mes real se convierte en un escenario: una compra, una cuota nueva y un
+      imprevisto. Descubre cuándo tocarías tu colchón y qué margen quedaría.
+    </p>
+  </div>
+  <article class="card">
+    <div class="row">
+      <label for="radar-month">Mes de referencia</label
+      ><select id="radar-month"></select
+      ><button id="radar-use-data">Usar este mes del tablero</button>
+    </div>
+    <p id="radar-source" class="sub" role="status">
+      Carga tus movimientos para elegir una base, o completa los datos
+      manualmente.
+    </p>
+    <form id="radar-form" class="tool-form radar-form" novalidate>
+      <label
+        >Ahorro líquido disponible hoy (CLP)<input
+          id="radar-savings"
+          type="number"
+          value="0"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Ingresos por mes (CLP)<input
+          id="radar-income"
+          type="number"
+          value="0"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Costos y gastos por mes (CLP)<input
+          id="radar-expenses"
+          type="number"
+          value="0"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Aportes de inversión por mes (CLP)<input
+          id="radar-investments"
+          type="number"
+          value="0"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Cuota nueva por mes (CLP)<input
+          id="radar-payment"
+          type="number"
+          value="0"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Compra o decisión: pago único hoy (CLP)<input
+          id="radar-purchase"
+          type="number"
+          value="0"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Colchón deseado (meses de gastos)<input
+          id="radar-reserve"
+          type="number"
+          value="3"
+          min="0"
+          max="24"
+          step="1"
+          required
+      /></label>
+      <label
+        >Horizonte (meses)<input
+          id="radar-horizon"
+          type="number"
+          value="12"
+          min="1"
+          max="60"
+          step="1"
+          required
+      /></label>
+      <label
+        >Caída temporal de ingreso (%)<input
+          id="radar-drop"
+          type="number"
+          value="20"
+          min="0"
+          max="100"
+          step="1"
+          required
+      /></label>
+      <label
+        >Imprevisto de pago único (CLP)<input
+          id="radar-shock"
+          type="number"
+          value="100000"
+          min="0"
+          step="1000"
+          required
+      /></label>
+      <label
+        >Mes en que empieza el imprevisto<input
+          id="radar-shock-month"
+          type="number"
+          value="2"
+          min="1"
+          max="60"
+          step="1"
+          required
+      /></label>
+      <label
+        >Duración de la caída de ingreso (meses)<input
+          id="radar-duration"
+          type="number"
+          value="3"
+          min="1"
+          max="60"
+          step="1"
+          required
+      /></label>
+    </form>
+    <p class="sub">
+      La cuota nueva debe ser un compromiso adicional: no dupliques deudas que
+      ya están dentro de tus gastos. Los aportes de inversión salen de tu ahorro
+      líquido; no se supone rentabilidad.
+    </p>
+    <p id="radar-error" class="bad" role="alert"></p>
+  </article>
+  <div id="radar-results" aria-live="polite"></div>
+  <article class="card methodology">
+    <h3>Un escenario con sus cuentas a la vista</h3>
+    <p>
+      El mes de referencia se repite con los ajustes que ingreses; no se
+      adivinan gastos ni ingresos futuros. Si eliges un mes incompleto, completa
+      los valores antes de comparar. El mes 0 representa hoy después de la
+      compra. El imprevisto se paga una vez y la caída de ingreso dura los meses
+      indicados.
+    </p>
+    <p>
+      Colchón = (gastos mensuales + cuota nueva) × meses elegidos. El margen
+      adicional busca la mayor cuota constante que mantendría todos los cierres
+      de mes sobre ese colchón, incluyendo la reserva necesaria para esa cuota.
+      Es una prueba de tus supuestos, no una aprobación de crédito.
+    </p>
+    <p>
+      El diseño combina la
+      <a
+        href="https://www.cmfchile.cl/educa/621/w3-propertyvalue-43579.html"
+        target="_blank"
+        rel="noopener noreferrer"
+        >capacidad de pago explicada por CMF</a
+      >
+      y la
+      <a
+        href="https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >reserva para imprevistos del CFPB</a
+      >. Las simulaciones se mantienen solo durante esta sesión y no cambian tus
+      movimientos.
+    </p>
+  </article>
+</section>
 
-<details class="card"><summary>Respaldo (exportar / importar JSON)</summary>
-<p class="sub">Exporta un respaldo de tus datos de Neon antes de importar o reemplazar movimientos.</p>
-<textarea id="js" rows="5" style="width:100%"></textarea>
-<div class="row"><button id="ex">Exportar</button><button id="im">Importar</button></div></details>
 </div>
 </main>
 <p class="sub" style="text-align:center;margin:8px 0 24px"><a href="comercial/" style="color:var(--acc)">Servicios (borrador)</a></p>
@@ -189,7 +545,7 @@ function dls(){
  });
 }
 function update(now){
- save();kpis();dls();
+ save();kpis();dls();publishState();
  clearTimeout(tm);if(now)charts();else tm=setTimeout(charts,150);
 }
 
@@ -225,19 +581,11 @@ $('ps').oninput=function(){S.p.saldo=+$('ps').value;update()};
 $('pt').oninput=function(){S.p.tasa=+$('pt').value;update()};
 $('pm').oninput=function(){S.p.meses=+$('pm').value;update()};
 ['d1','d2','gr','ac','tf'].forEach(function(i){$(i).onchange=function(){i==='gr'||i==='ac'||i==='tf'?charts():update(1)}});
-$('ex').onclick=function(){var t=JSON.stringify(S);$('js').value=t;try{navigator.clipboard.writeText(t)}catch(e){}};
-$('im').onclick=function(){
- try{
-  var o=JSON.parse($('js').value);
-  if(!o||!Array.isArray(o.rows))throw 0;
-  o.rows=o.rows.filter(function(r){return r&&TIPOS.indexOf(r.t)>-1}).map(function(r){return {id:uid(),f:String(r.f||''),t:r.t,d:String(r.d||''),m:+r.m}});
-  o.p=o.p||S.p;o.auto=o.auto?1:0;S=o;sync();table();update(1);
- }catch(e){alert('El JSON no es válido.')}
-};
 $('nf').value=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
 /* ---------- Neon: sesión verificada en el servidor ---------- */
 function cs_(t,bad){$('cs').textContent=t;$('cs').className=bad?'bad':'sub'}
+function publishState(){window.financialState=S;window.dispatchEvent(new CustomEvent('financial-state',{detail:S}))}
 async function api(path,options){var r=await fetch(path,options),d=await r.json();if(!r.ok){if(r.status===409)blocked=true;throw Error(d.error||'No se pudo completar la solicitud.')}return d}
 function queue(){if(blocked)return;cs_('Cambios pendientes…');clearTimeout(qt);qt=setTimeout(flush,700)}
 async function flush(){
@@ -247,7 +595,7 @@ async function flush(){
  try{var d=await api('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},S,{revision:revision}))});revision=d.revision;cs_('Guardado en Neon ✓');if(sent!==JSON.stringify(S))queue()}
  catch(e){cs_(e.message,1)}finally{busy=false}
 }
-async function start(){try{S=await api('/api/state');revision=S.revision;delete S.revision;$('app').hidden=false;sync();table();kpis();dls();charts();cs_('Conectado a Neon.');}catch(e){cs_(e.message,1)}}
+async function start(){try{S=await api('/api/state');revision=S.revision;delete S.revision;$('app').hidden=false;sync();table();kpis();dls();charts();publishState();cs_('Conectado a Neon.');}catch(e){cs_(e.message,1)}}
 var proposals=[],chatHistory=[];
 $('interpret').onclick=async function(){proposals=[];$('confirmText').hidden=true;$('preview').textContent='Interpretando…';$('interpret').disabled=true;var text=$('message').value;try{var d=await api('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,history:chatHistory})});if(text!==$('message').value){$('preview').textContent='El texto cambió. Vuelve a revisarlo.';return}chatHistory.push({role:'user',content:text},{role:'assistant',content:JSON.stringify(d)});chatHistory=chatHistory.slice(-6);proposals=d.rows;$('preview').textContent=(d.message||'')+'\n'+proposals.map(function(r){return r.f+' · '+r.t+' · '+r.d+' · '+fm.format(r.m)}).join('\n');$('confirmText').hidden=!proposals.length}catch(e){$('preview').textContent=e.message}finally{$('interpret').disabled=false}};
 $('message').oninput=function(){proposals=[];$('confirmText').hidden=true;$('preview').textContent=''};
@@ -255,5 +603,5 @@ $('confirmText').onclick=function(){if(!proposals.length||blocked)return;proposa
 window.addEventListener('beforeunload',function(e){if(busy||$('cs').textContent==='Cambios pendientes…'){e.preventDefault();e.returnValue=''}});
 start();
 </script>
-</body>
+<script type="module" src="/finance-tools.js"></script></body>
 </html>

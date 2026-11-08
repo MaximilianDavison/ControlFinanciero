@@ -17,12 +17,12 @@ export async function POST(req) {
       month: "2-digit",
       day: "2-digit",
     }).format(new Date());
-    const data = process.env.OPENAI_API_KEY
+    const data = process.env.GROQ_API_KEY
       ? { ...(await interpret(text, now, history)), mode: "ai" }
       : {
           rows: parseMovements(text, now),
           message:
-            "Modo guiado: configura OpenAI para conversar con lenguaje más libre.",
+            "Modo guiado: configura Groq para conversar con lenguaje más libre.",
           mode: "guided",
         };
     return Response.json(data, { headers: { "Cache-Control": "no-store" } });
@@ -31,7 +31,7 @@ export async function POST(req) {
       {
         error:
           e.name === "TimeoutError"
-            ? "OpenAI tardó demasiado. Inténtalo nuevamente."
+            ? "Groq tardó demasiado. Inténtalo nuevamente."
             : e.message,
       },
       { status: 400 },

@@ -1,0 +1,303 @@
+.finance-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: var(--card);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  margin: 4px 0 20px;
+  position: sticky;
+  top: 4px;
+  z-index: 5;
+  box-shadow: 0 4px 12px #00000006;
+}
+.finance-tabs button {
+  flex: 1;
+  padding: 12px 10px;
+  background: transparent;
+  border: 0;
+  font-weight: 600;
+}
+.finance-tabs button[aria-selected="true"] {
+  background: var(--acc);
+  color: #fff;
+  border-radius: 8px;
+}
+.finance-tabs button:focus-visible {
+  outline: 3px solid #e0a030;
+  outline-offset: 2px;
+}
+.tool-intro {
+  padding: 22px 4px 14px;
+  max-width: 750px;
+}
+.tool-intro h2 {
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
+  margin: 9px 0;
+}
+.tool-intro p {
+  font-size: 15px;
+  color: var(--mut);
+  max-width: 680px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  font-weight: bold;
+  color: var(--acc);
+}
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.tool-grid > .card {
+  padding: 22px;
+  min-width: 0;
+}
+.tool-grid h3,
+.methodology h3 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.tool-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+.tool-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mut);
+}
+.tool-form input,
+.tool-form select {
+  width: 100%;
+  padding: 10px;
+  min-width: 0;
+  color: var(--tx);
+  font-size: 14px;
+}
+.tool-form .wide {
+  grid-column: 1/-1;
+}
+.tool-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 16px 0;
+}
+.tool-metric {
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 9px;
+  border: 1px solid var(--bd);
+  min-width: 0;
+}
+.tool-metric small {
+  display: block;
+  font-size: 11px;
+  color: var(--mut);
+  margin-bottom: 5px;
+}
+.tool-metric strong {
+  font-size: 19px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.tool-metric.accent {
+  border-color: var(--acc);
+}
+.tool-metric.accent strong {
+  color: var(--acc);
+}
+.tool-note {
+  font-size: 12px;
+  color: var(--mut);
+  line-height: 1.6;
+}
+.tool-insight {
+  padding: 13px 15px;
+  border-left: 3px solid var(--acc);
+  background: var(--bg);
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  margin: 14px 0;
+}
+.tool-insight.warning {
+  border-left-color: var(--bad);
+}
+.tool-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  margin: 18px 0 5px;
+}
+.tool-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--mut);
+  margin-bottom: 14px;
+}
+.tool-legend span:before {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 3px;
+  background: var(--line);
+  margin: 0 5px 3px 0;
+}
+.tool-schedule {
+  max-height: 310px;
+  overflow: auto;
+  margin-top: 10px;
+}
+.tool-schedule table {
+  font-size: 11px;
+  min-width: 420px;
+}
+.tool-schedule td {
+  padding: 6px 4px;
+  border-top: 1px solid var(--bd);
+  text-align: right;
+}
+.tool-schedule th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  font-size: 10px;
+  text-align: right;
+}
+.tool-schedule th:first-child,
+.tool-schedule td:first-child {
+  text-align: left;
+}
+.tool-grid .p {
+  padding: 10px 14px;
+  width: 100%;
+  margin-top: 12px;
+}
+.methodology {
+  color: var(--mut);
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 8px;
+}
+.methodology h3 {
+  font-size: 14px;
+  color: var(--tx);
+}
+.methodology a {
+  color: var(--acc);
+}
+.radar-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.radar-results-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+.radar-results-grid .tool-metric {
+  background: var(--card);
+  padding: 18px 14px;
+}
+.radar-verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+}
+.radar-verdict h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+.radar-verdict p {
+  margin: 4px 0;
+}
+.status-orb {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border-radius: 50%;
+  background: var(--ok);
+  margin-top: 5px;
+}
+.status-orb.warning {
+  background: var(--bad);
+}
+.radar-results-grid strong {
+  font-size: 23px;
+}
+.radar-chart-card {
+  padding: 22px;
+}
+.radar-chart-card h3 {
+  margin-top: 0;
+}
+.radar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.radar-actions h4 {
+  margin: 0 0 8px;
+}
+.radar-actions p {
+  font-size: 13px;
+  margin: 0;
+  color: var(--mut);
+}
+@media (max-width: 800px) {
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+  .radar-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .radar-results-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tool-intro h2 {
+    font-size: 25px;
+  }
+}
+@media (max-width: 480px) {
+  .finance-tabs button {
+    font-size: 11px;
+    padding: 11px 4px;
+  }
+  .tool-grid > .card {
+    padding: 16px;
+  }
+  .tool-form,
+  .radar-form {
+    grid-template-columns: 1fr;
+  }
+  .radar-results-grid strong {
+    font-size: 18px;
+  }
+  .radar-actions {
+    grid-template-columns: 1fr;
+  }
+  .tool-intro {
+    padding-top: 12px;
+  }
+  .tool-metric strong {
+    font-size: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}

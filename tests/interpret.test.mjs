@@ -2,20 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { interpret } from "../lib/interpret.mjs";
 const reply = (value) => async (url, options) => {
-  assert.equal(url, "https://api.openai.com/v1/responses");
+  assert.equal(url, "https://api.groq.com/openai/v1/chat/completions");
   const body = JSON.parse(options.body);
-  assert.equal(body.store, false);
-  assert.equal(body.text.format.strict, true);
+  assert.equal(body.response_format.json_schema.strict, true);
+  assert.equal(body.model, process.env.GROQ_MODEL || "openai/gpt-oss-20b");
+  assert.equal(body.messages[0].role, "system");
   assert.equal(body.tools, undefined);
   return {
     ok: true,
     json: async () => ({
-      status: "completed",
-      output: [
-        {
-          type: "message",
-          content: [{ type: "output_text", text: JSON.stringify(value) }],
-        },
+      choices: [
+        { finish_reason: "stop", message: { content: JSON.stringify(value) } },
       ],
     }),
   };
@@ -54,4 +51,13 @@ test("rechaza respuesta IA con fecha o importe inválidos", async () => {
       }),
     ),
   );
+});
+test('no reintenta límites de Groq y explica el problema',async()=>{
+ let calls=0;
+ await assert.rejects(()=>interpret('gasté 1000 en pan','2026-11-07',[],async()=>{calls++;return {ok:false,status:429}}),/Groq alcanzó un límite/);
+ assert.equal(calls,1);
+});
+test('rechaza JSON ilegible y respuestas truncadas de Groq',async()=>{
+ await assert.rejects(()=>interpret('gasté 1000 en pan','2026-11-07',[],async()=>({ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:'no es json'}}]})})),/ilegible/);
+ await assert.rejects(()=>interpret('gasté 1000 en pan','2026-11-07',[],async()=>({ok:true,json:async()=>({choices:[{finish_reason:'length',message:{content:'{}'}}]})})),/no completó/);
 });

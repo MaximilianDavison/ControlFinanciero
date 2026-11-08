@@ -72,7 +72,7 @@ export async function PUT(req) {
       return response(
         {
           error:
-            "Hay cambios de otra pestaña o dispositivo. Exporta tus cambios y recarga antes de continuar.",
+            "Hay cambios de otra pestaña o dispositivo. Tus cambios actuales no se guardaron. Revisa la otra sesión antes de recargar.",
         },
         409,
       );

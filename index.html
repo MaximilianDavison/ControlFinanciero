@@ -86,10 +86,6 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 <div class="ch" style="margin-top:38px"><canvas id="c3"></canvas></div></div>
 </div>
 
-<details class="card"><summary>Respaldo (exportar / importar JSON)</summary>
-<p class="sub">Tus datos viven solo en este navegador. Exporta para guardarlos o moverlos a otro dispositivo.</p>
-<textarea id="js" rows="5" style="width:100%"></textarea>
-<div class="row"><button id="ex">Exportar</button><button id="im">Importar</button></div></details>
 </div>
 </main>
 <p class="sub" style="text-align:center;margin:8px 0 24px"><a href="comercial/" style="color:var(--acc)">Servicios (borrador)</a></p>
@@ -226,15 +222,6 @@ $('ps').oninput=function(){S.p.saldo=+$('ps').value;update()};
 $('pt').oninput=function(){S.p.tasa=+$('pt').value;update()};
 $('pm').oninput=function(){S.p.meses=+$('pm').value;update()};
 ['d1','d2','gr','ac','tf'].forEach(function(i){$(i).onchange=function(){i==='gr'||i==='ac'||i==='tf'?charts():update(1)}});
-$('ex').onclick=function(){var t=JSON.stringify(S);$('js').value=t;try{navigator.clipboard.writeText(t)}catch(e){}};
-$('im').onclick=function(){
- try{
-  var o=JSON.parse($('js').value);
-  if(!o||!Array.isArray(o.rows))throw 0;
-  o.rows=o.rows.filter(function(r){return r&&TIPOS.indexOf(r.t)>-1}).map(function(r){return {id:uid(),f:String(r.f||''),t:r.t,d:String(r.d||''),m:+r.m}});
-  o.p=o.p||S.p;o.auto=o.auto?1:0;S=o;sync();table();update(1);
- }catch(e){alert('El JSON no es válido.')}
-};
 $('nf').value=new Date().toISOString().slice(0,10);
 
 /* ---------- Supabase ---------- */
