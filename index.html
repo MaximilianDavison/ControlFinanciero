@@ -81,6 +81,14 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 <div class="card" id="credito-simulacion">
 <h2>2. Tasa de interés y crédito</h2>
 <p class="sub">Comparador de cotizaciones por institución y producto. No representan deudas contratadas ni dinero recibido. No compara CAE oficiales; verifica condiciones contractuales antes de contratar.</p>
+<details class="card" id="tenpo-tarjeta"><summary>Ficha de producto — Tarjeta de crédito Tenpo (no es una simulación)</summary>
+<p class="sub">Datos observados el 08/11/2026; cupo y saldo sujetos a cambios. Tasas y comisiones por confirmar con el estado de cuenta y tarifario oficial.</p>
+<div class="kpis"><div class="kpi"><small>Cupo total</small><b>$900.000</b></div><div class="kpi"><small>Utilizado</small><b>$20.615</b></div><div class="kpi"><small>Disponible</small><b>$879.385</b></div><div class="kpi"><small>Utilización</small><b>2,29%</b></div></div>
+<p>Facturación: <strong>20/11/2026</strong> · Vencimiento: <strong>05/12/2026</strong>.</p>
+<p>Tasa de interés: <strong>por confirmar</strong> · CAE: <strong>por confirmar</strong> · Mantención: <strong>por confirmar</strong>.</p>
+<p class="sub">El cupo no es ingreso. El saldo utilizado no debe duplicarse con el consumo de Claude de $20.615. Esta ficha no confirma un avance contratado.</p>
+<p class="sub"><a href="registros/2026-11-08-tenpo-tarjeta-credito.md" target="_blank" rel="noopener noreferrer">Ficha documental y fuentes pendientes</a></p>
+</details>
 <div class="row"><label>Simulación <select id="sim-selector"></select></label></div>
 <div id="sim-detalle"></div>
 <p class="sub">Catálogo de referencia definido en el código: para añadir instituciones se agrega una ficha al arreglo SIMULACIONES_CREDITO. Aún no hay formulario de alta ni sincronización de simulaciones en Supabase.</p>
