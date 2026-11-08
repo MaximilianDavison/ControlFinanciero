@@ -4,7 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Orden financiero</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js">
+// Simulación de crédito separada del libro mayor y de los créditos efectivamente contratados.
+(function(){
+ var rows=[[2,105022],[10,23843],[17,15597],[24,12233]], capital=200000;
+ function rate(n,p){var lo=0,hi=1;for(var k=0;k<90;k++){var mid=(lo+hi)/2;var pv=p*(1-Math.pow(1+mid,-n))/mid;if(pv>capital)lo=mid;else hi=mid;}return (lo+hi)/2;}
+ var target=document.getElementById('sim-tenpo');if(!target)return;
+ target.innerHTML=rows.map(function(x){var total=x[0]*x[1];return '<tr><td>'+x[0]+' cuotas</td><td>'+fm.format(x[1])+'</td><td>'+fm.format(total)+'</td><td>'+fm.format(total-capital)+'</td><td>'+(rate(x[0],x[1])*100).toFixed(2).replace('.',',')+'%</td></tr>'}).join('');
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <style>
@@ -56,6 +64,14 @@ tr.inv input,tr.inv select{border-color:var(--bad)}
 </div>
 <div class="kpis" id="kpis"></div>
 <p id="st"></p>
+</div>
+
+<div class="card" id="credito-simulacion">
+<h2>2. Tasa de interés y crédito — simulación Tenpo</h2>
+<p class="sub">Cotización observada el 08/11/2026 por $200.000 CLP. No es un crédito contratado. Primera cuota indicada: 05/12/2026. Tasas implícitas estimadas, no tasas contractuales ni CAE.</p>
+<div class="sc"><table><thead><tr><th>Plazo</th><th>Cuota</th><th>Total</th><th>Costo adicional</th><th>Tasa mensual implícita*</th></tr></thead><tbody id="sim-tenpo"></tbody></table></div>
+<p class="sub">*Tasa calculada suponiendo desembolso íntegro de $200.000 y cuotas iguales mensuales, sin cargos externos. La CAE oficial, impuestos y comisiones no constan en las capturas.</p>
+<p class="sub"><a href="https://github.com/MaximilianDavison/ControlFinanciero/blob/main/registros/2026-11-08-tenpo-avance-y-facturacion.md" target="_blank" rel="noopener noreferrer">Ver evidencia y notas de la simulación</a>. Las fotografías originales fueron entregadas en la conversación; aún no están alojadas en GitHub.</p>
 </div>
 
 <div class="card"><h2>Movimientos (editables)</h2>
